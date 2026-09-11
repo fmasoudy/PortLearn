@@ -1,0 +1,50 @@
+# Public CI for PortLearn.
+# Runs on every push and pull request, guarded to the public fmasoudy/
+# PortLearn repository, least-privilege permissions, frozen
+# per-interpreter sequence, single dependent build-and-verify-wheel job,
+# immutable action pins.
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  checks:
+    if: github.repository == 'fmasoudy/PortLearn'
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.11", "3.12", "3.13"]
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Set up uv
+        uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
+        with:
+          version: "0.12.10"
+      - name: Run the frozen per-interpreter sequence
+        run: |
+          uv sync --locked --python ${{ matrix.python-version }}
+          uv run --python ${{ matrix.python-version }} ruff check .
+          uv run --python ${{ matrix.python-version }} pytest
+  build-and-verify-wheel:
+    if: github.repository == 'fmasoudy/PortLearn'
+    needs: checks
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Set up uv
+        uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
+        with:
+          version: "0.12.10"
+      - name: Build the distribution
+        run: |
+          uv build
+          uv run python scripts/verify_built_wheel.py
