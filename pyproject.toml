@@ -1,0 +1,39 @@
+# PortLearn — package metadata and tool configuration.
+
+[project]
+# The distribution name and the PEP 440 version declared here are the single
+# version authority for the package.
+name = "portlearn"
+version = "0.0.1.dev0"
+
+# Minimum supported Python; no untested upper-version exclusion.
+requires-python = ">=3.11"
+
+# Public packaging metadata (PEP 621): one-line description of present
+# functionality only; README and licence referenced, never duplicated.
+description = "Finance-first research framework for controlled, reproducible, and modular experimentation in machine-learned portfolio choice."
+readme = "README.md"
+license = "Apache-2.0"
+
+# Canonical public project links: source repository and issue tracker.
+[project.urls]
+Repository = "https://github.com/fmasoudy/PortLearn"
+Issues = "https://github.com/fmasoudy/PortLearn/issues"
+
+# No runtime dependencies and no optional capability groups.
+
+# Development dependencies: the test harness and the source-quality checker.
+[dependency-groups]
+dev = [
+    "pytest>=9.1.1,<10",
+    "ruff>=0.16.6,<0.17",
+]
+
+# Standards-based PEP 517 build backend, bounded.
+[build-system]
+requires = ["hatchling>=1.32.0,<2"]
+build-backend = "hatchling.build"
+
+# Build target for the src layout.
+[tool.hatch.build.targets.wheel]
+packages = ["src/portlearn"]

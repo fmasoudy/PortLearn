@@ -1,0 +1,425 @@
+# Controlled public release mechanism.
+#
+# This workflow is the intended path for creating a public version tag
+# and its GitHub Release. It never runs automatically: workflow_dispatch
+# is the sole trigger, so every run is a deliberate, manually dispatched
+# release act.
+#
+# It validates every consistency rule FIRST and fails closed on any
+# mismatch, leaving no partial state beyond the failed run log. It never
+# deletes, moves, or overwrites an existing tag or release. Existence
+# queries fail closed the same way: a query whose answer cannot be
+# confirmed (transport error, auth error, unexpected HTTP status)
+# aborts the run rather than being read as "absent". Runs are also
+# serialized in a 'public-release' concurrency group (no cancel), so
+# two dispatches cannot race between validation and creation.
+#
+# Development releases are rejected: a version carrying a PEP 440
+# development segment (for example 0.0.1.dev0) describes an
+# unreleased development state and must never receive a public release
+# tag or GitHub Release. The validation module fails closed on it.
+# Pre-release versions (a/b/rc) are likewise rejected: this mechanism
+# does not mark the GitHub Release as a prerelease, so RC support is
+# deferred until the creation step can label them correctly.
+#
+# Tag-object design decision: creation is a single release-creation
+# command with --target, which creates the release's own lightweight tag
+# at the exact target commit together with the Release. A separate
+# annotated tag created and pushed on its own would split the operation
+# in two and risk partial state (an annotated tag with no Release).
+# Keeping creation to one command reduces partial-state risk; it is not
+# a transaction spanning the underlying API calls. The release-created
+# lightweight tag is therefore selected deliberately to minimize
+# partial-state risk; release provenance is carried by the Release
+# record, the pinned target commit, and the manually dispatched run,
+# not by tag-object metadata.
+name: public-release
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Requested release version; must exactly equal [project].version in pyproject.toml at the target commit (the single version authority) and must be a final release: development (dev) and pre-release (a/b/rc) versions are rejected."
+        required: true
+        type: string
+      tag_name:
+        description: "Release tag name; must equal v plus the pyproject.toml version (for example v0.0.1)."
+        required: true
+        type: string
+      target_sha:
+        description: "Full 40-hex commit SHA of public main to tag; it must exist and be the current origin/main head."
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+concurrency:
+  group: public-release
+  cancel-in-progress: false
+
+jobs:
+  release:
+    if: github.repository == 'fmasoudy/PortLearn'
+    runs-on: ubuntu-latest
+    env:
+      PL_VERSION: ${{ inputs.version }}
+      PL_TAG_NAME: ${{ inputs.tag_name }}
+      PL_TARGET_SHA: ${{ inputs.target_sha }}
+    steps:
+      - name: Check out the exact target commit
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ inputs.target_sha }}
+          fetch-depth: 0
+          # Least authority: no later step may use a persisted token;
+          # every repo operation after this is read-only except the
+          # final release creation, which names its token and
+          # repository explicitly.
+          persist-credentials: false
+      - name: Fail closed unless the target commit is the current origin main head
+        run: |
+          set -euo pipefail
+          git fetch --no-tags origin "+refs/heads/main:refs/remotes/origin/main"
+          git fetch --tags origin
+          git cat-file -e "${PL_TARGET_SHA}^{commit}"
+          main_head="$(git rev-parse refs/remotes/origin/main)"
+          if [ "$main_head" != "$PL_TARGET_SHA" ]; then
+            echo "::error::target ${PL_TARGET_SHA} is not the current origin/main head (${main_head}); a stale or off-main commit is never tagged"
+            exit 1
+          fi
+      - name: Fail closed if the tag already exists locally or on the remote
+        run: |
+          set -euo pipefail
+          if [ -n "$(git tag --list "$PL_TAG_NAME")" ]; then
+            echo "::error::local tag ${PL_TAG_NAME} already exists; existing tags are never overwritten"
+            exit 1
+          fi
+          # A failed remote query must never be read as tag-absence:
+          # capture the query status separately and abort on any nonzero
+          # (set -e does not fire inside if-conditions, so only the
+          # explicit status check below makes failure observable).
+          remote_tag_query="$(git ls-remote --tags origin "refs/tags/$PL_TAG_NAME")"
+          remote_tag_query_status="$?"
+          if [ "$remote_tag_query_status" -ne 0 ]; then
+            echo "::error::remote tag query for ${PL_TAG_NAME} failed (exit ${remote_tag_query_status}); absence cannot be confirmed"
+            exit 1
+          fi
+          if [ -n "$remote_tag_query" ]; then
+            echo "::error::remote tag ${PL_TAG_NAME} already exists; existing tags are never overwritten"
+            exit 1
+          fi
+      - name: Fail closed if the GitHub Release already exists
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          # Only an explicit answer permits the run to proceed: 200 means
+          # the release exists (abort), 404 means absent (proceed), and
+          # every other status — auth failure, rate limit, server or
+          # transport error — aborts. The CLI release-view helper cannot
+          # express this: its exit 1 conflates 404 with every failure
+          # mode, so the guard probes the REST endpoint directly.
+          release_status="$(curl --silent --show-error \
+            --output /dev/null \
+            --write-out "%{http_code}" \
+            -H "Authorization: Bearer ${GH_TOKEN}" \
+            -H "Accept: application/vnd.github+json" \
+            "$GITHUB_API_URL/repos/$GH_REPO/releases/tags/$PL_TAG_NAME")"
+          if [ "$release_status" = "200" ]; then
+            echo "::error::a GitHub Release for ${PL_TAG_NAME} already exists; an existing release is never overwritten"
+            exit 1
+          elif [ "$release_status" = "404" ]; then
+            echo "no existing GitHub Release for ${PL_TAG_NAME} (HTTP 404)"
+          else
+            echo "::error::release-existence query for ${PL_TAG_NAME} returned HTTP ${release_status}; absence cannot be confirmed"
+            exit 1
+          fi
+      - name: Set up uv
+        uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
+        with:
+          version: "0.12.10"
+      - name: Write the release validation module
+        run: |
+          cat > "${RUNNER_TEMP}/release_validation.py" <<'PY'
+          # --- portlearn-release-validation: begin (pure, offline) ---
+          """Pure, offline release-consistency validation.
+
+          This module is deliberately standalone: it reads only the
+          pyproject.toml and CHANGELOG.md of the checked-out target commit
+          plus a caller-supplied list of existing version tags. It performs
+          no network or repository access and it creates nothing. Every rule
+          fails closed by raising ReleaseValidationError with the reason;
+          the caller reports the reason and stops before anything is created.
+          """
+
+          from __future__ import annotations
+
+          import argparse
+          import re
+          import sys
+          import tomllib
+          from pathlib import Path
+
+          from packaging.version import InvalidVersion, Version
+
+          FULL_SHA_PATTERN = re.compile(r"[0-9a-f]{40}")
+
+
+          class ReleaseValidationError(Exception):
+              """A release-consistency rule failed; nothing may be created."""
+
+
+          def heading_pattern(version: str) -> re.Pattern[str]:
+              """The Keep-a-Changelog release heading pattern for one version."""
+              return re.compile(
+                  rf"^## \[{re.escape(version)}\](?:\s.*)?$", re.MULTILINE
+              )
+
+
+          def changelog_section(changelog_text: str, version: str) -> str | None:
+              """The body of one versioned release heading, or None if absent."""
+              match = heading_pattern(version).search(changelog_text)
+              if match is None:
+                  return None
+              rest = changelog_text[match.end() :]
+              following = re.search(r"^## ", rest, re.MULTILINE)
+              return rest[: following.start()] if following else rest
+
+
+          def meaningful_content(section_text: str) -> list[str]:
+              """The content lines of one section body.
+
+              Headings (the Keep-a-Changelog ``###`` subsections and the
+              ``##`` version/Unreleased headings) are structure, not
+              content: an otherwise-empty scaffold of headings is an
+              empty section. Everything else — bullets, prose, any
+              non-empty non-heading line — is content that must be
+              released or moved before a release is cut.
+              """
+              return [
+                  line.strip()
+                  for line in section_text.splitlines()
+                  if line.strip() and not line.lstrip().startswith("#")
+              ]
+
+
+          def declared_version(pyproject_path: Path | str) -> str:
+              """The version declared by pyproject.toml at the target commit."""
+              data = tomllib.loads(Path(pyproject_path).read_text(encoding="utf-8"))
+              try:
+                  return str(data["project"]["version"])
+              except KeyError as error:
+                  message = (
+                      "pyproject.toml at the target commit declares no "
+                      "[project] version"
+                  )
+                  raise ReleaseValidationError(message) from error
+
+
+          def check_monotone_forward(
+              version: str, existing_version_tags: list[str]
+          ) -> None:
+              """The candidate version must be strictly after every existing tag."""
+              candidate = Version(version)
+              for tag in existing_version_tags:
+                  name = tag[1:] if tag.startswith("v") else tag
+                  try:
+                      existing = Version(name)
+                  except InvalidVersion:
+                      continue  # not a version tag; it does not constrain ordering
+                  if candidate <= existing:
+                      message = (
+                          f"version {version} is not monotone-forward: the "
+                          f"existing public version tag {tag} is at or after it"
+                      )
+                      raise ReleaseValidationError(message)
+
+
+          def reject_development_release(candidate: Version) -> None:
+              """A PEP 440 development release must never be released publicly.
+
+              A version carrying a development segment (``.devN``, as in
+              ``0.0.1.dev0``) describes an unreleased development state,
+              not a releasable version: tagging it would publish a moving
+              target. Pre-release segments (``a``, ``b``, ``rc``) are
+              rejected separately by ``reject_prerelease_version``.
+              """
+              if candidate.dev is not None:
+                  message = (
+                      f"version {str(candidate)!r} is a PEP 440 development "
+                      "release (dev segment present): development releases "
+                      "are never tagged or released publicly"
+                  )
+                  raise ReleaseValidationError(message)
+
+
+          def reject_prerelease_version(candidate: Version) -> None:
+              """Pre-release versions are deferred, not released.
+
+              This mechanism creates GitHub Releases without the
+              prerelease flag, so publishing ``a``/``b``/``rc`` versions
+              would mislabel them as full releases. Pre-release support
+              must be added to the creation step before any pre-release
+              may validate.
+              """
+              if candidate.pre is not None:
+                  message = (
+                      f"version {str(candidate)!r} is a PEP 440 pre-release "
+                      f"({candidate.pre[0]}{candidate.pre[1]} segment "
+                      "present): prerelease (RC) support is deferred, so "
+                      "pre-release versions are never tagged or released "
+                      "through this mechanism"
+                  )
+                  raise ReleaseValidationError(message)
+
+
+          def validate_release(
+              version: str,
+              tag_name: str,
+              target_sha: str,
+              pyproject_path: Path | str,
+              changelog_path: Path | str,
+              existing_version_tags: list[str] | None = None,
+          ) -> str:
+              """Validate every release-consistency rule; return the release notes.
+
+              Any violation raises ReleaseValidationError describing the broken
+              rule; the caller must abort before creating anything.
+              """
+              if not FULL_SHA_PATTERN.fullmatch(target_sha):
+                  message = (
+                      f"target {target_sha!r} is not a 40-character full "
+                      "commit SHA; a shortened or malformed target is never "
+                      "tagged"
+                  )
+                  raise ReleaseValidationError(message)
+
+              declared = declared_version(pyproject_path)
+              if version != declared:
+                  message = (
+                      f"requested version {version!r} does not equal the "
+                      "version declared by pyproject.toml at the target "
+                      f"commit ({declared!r})"
+                  )
+                  raise ReleaseValidationError(message)
+
+              try:
+                  candidate = Version(version)
+              except InvalidVersion as error:
+                  message = (
+                      f"requested version {version!r} is not a valid "
+                      "PEP 440 version"
+                  )
+                  raise ReleaseValidationError(message) from error
+
+              reject_development_release(candidate)
+              reject_prerelease_version(candidate)
+
+              expected_tag = f"v{version}"
+              if tag_name != expected_tag:
+                  message = (
+                      f"tag name {tag_name!r} must equal 'v' plus the "
+                      f"declared version ({expected_tag!r})"
+                  )
+                  raise ReleaseValidationError(message)
+
+              changelog_text = Path(changelog_path).read_text(encoding="utf-8")
+              section = changelog_section(changelog_text, version)
+              if section is None:
+                  message = (
+                      f"CHANGELOG.md has no release section for {version}: "
+                      f"the '## [{version}]' heading is required before a "
+                      "release"
+                  )
+                  raise ReleaseValidationError(message)
+              if not meaningful_content(section):
+                  message = (
+                      f"the CHANGELOG.md [{version}] release section must "
+                      "not be empty: the release notes are drawn from it"
+                  )
+                  raise ReleaseValidationError(message)
+
+              unreleased = changelog_section(changelog_text, "Unreleased")
+              pending = meaningful_content(unreleased) if unreleased is not None else []
+              if pending:
+                  message = (
+                      "the CHANGELOG.md [Unreleased] section is not empty "
+                      f"or absent: {len(pending)} pending entries must move "
+                      "into release sections first"
+                  )
+                  raise ReleaseValidationError(message)
+
+              check_monotone_forward(version, existing_version_tags or [])
+              return section.strip()
+
+
+          def main(argv: list[str] | None = None) -> int:
+              """Run validation from command-line arguments; 0 on success."""
+              parser = argparse.ArgumentParser(
+                  description="Validate a public release request (fail-closed)."
+              )
+              parser.add_argument("--version", required=True)
+              parser.add_argument("--tag-name", required=True)
+              parser.add_argument("--target-sha", required=True)
+              parser.add_argument("--pyproject", required=True)
+              parser.add_argument("--changelog", required=True)
+              parser.add_argument("--existing-tags-file", required=True)
+              parser.add_argument("--notes-out", required=True)
+              args = parser.parse_args(argv)
+
+              tags_path = Path(args.existing_tags_file)
+              existing: list[str] = []
+              if tags_path.is_file():
+                  existing = [
+                      line.strip()
+                      for line in tags_path.read_text(encoding="utf-8").splitlines()
+                      if line.strip()
+                  ]
+
+              try:
+                  notes = validate_release(
+                      version=args.version,
+                      tag_name=args.tag_name,
+                      target_sha=args.target_sha,
+                      pyproject_path=args.pyproject,
+                      changelog_path=args.changelog,
+                      existing_version_tags=existing,
+                  )
+              except ReleaseValidationError as error:
+                  print(f"release validation failed: {error}", file=sys.stderr)
+                  return 1
+
+              Path(args.notes_out).write_text(notes + "\n", encoding="utf-8")
+              print(f"release validation passed; notes written to {args.notes_out}")
+              return 0
+
+
+          if __name__ == "__main__":
+              raise SystemExit(main())
+          # --- portlearn-release-validation: end ---
+          PY
+      - name: Collect existing public version tags
+        run: |
+          set -euo pipefail
+          git tag --list "v*" | sort > "${RUNNER_TEMP}/existing_tags.txt"
+      - name: Fail closed on any release-consistency mismatch
+        run: |
+          set -euo pipefail
+          uv sync --locked
+          uv run python "${RUNNER_TEMP}/release_validation.py" \
+            --version "$PL_VERSION" \
+            --tag-name "$PL_TAG_NAME" \
+            --target-sha "$PL_TARGET_SHA" \
+            --pyproject pyproject.toml \
+            --changelog CHANGELOG.md \
+            --existing-tags-file "${RUNNER_TEMP}/existing_tags.txt" \
+            --notes-out "${RUNNER_TEMP}/release-notes.md"
+      - name: Create the GitHub Release and its tag in one action
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          gh release create "$PL_TAG_NAME" --target "$PL_TARGET_SHA" --title "$PL_TAG_NAME" --notes-file "${RUNNER_TEMP}/release-notes.md"
