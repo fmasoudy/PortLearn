@@ -1,0 +1,103 @@
+{
+  "series_id": "SYNTHGDPQ",
+  "realtime_start": "2026-09-12",
+  "realtime_end": "2026-09-12",
+  "observations": [
+    {
+      "date": "2022-01-01",
+      "realtime_start": "2026-09-12",
+      "realtime_end": "2026-09-12",
+      "value": "26095.3525"
+    },
+    {
+      "date": "2022-04-01",
+      "realtime_start": "2026-09-12",
+      "realtime_end": "2026-09-12",
+      "value": "27197.4836"
+    },
+    {
+      "date": "2022-07-01",
+      "realtime_start": "2026-09-12",
+      "realtime_end": "2026-09-12",
+      "value": "27734.4684"
+    },
+    {
+      "date": "2022-10-01",
+      "realtime_start": "2026-09-12",
+      "realtime_end": "2026-09-12",
+      "value": "25768.1600"
+    },
+    {
+      "date": "2023-01-01",
+      "realtime_start": "2026-09-12",
+      "realtime_end": "2026-09-12",
+      "value": "25628.2834"
+    },
+    {
+      "date": "2023-04-01",
+      "realtime_start": "2026-09-12",
+      "realtime_end": "2026-09-12",
+      "value": "27419.4190"
+    },
+    {
+      "date": "2023-07-01",
+      "realtime_start": "2026-09-12",
+      "realtime_end": "2026-09-12",
+      "value": "."
+    },
+    {
+      "date": "2023-10-01",
+      "realtime_start": "2026-09-12",
+      "realtime_end": "2026-09-12",
+      "value": "24058.5081"
+    },
+    {
+      "date": "2024-01-01",
+      "realtime_start": "2026-09-12",
+      "realtime_end": "2026-09-12",
+      "value": "25942.9189"
+    },
+    {
+      "date": "2024-04-01",
+      "realtime_start": "2026-09-12",
+      "realtime_end": "2026-09-12",
+      "value": "25422.3301"
+    },
+    {
+      "date": "2024-07-01",
+      "realtime_start": "2026-09-12",
+      "realtime_end": "2026-09-12",
+      "value": "25380.3553"
+    },
+    {
+      "date": "2024-10-01",
+      "realtime_start": "2026-09-12",
+      "realtime_end": "2026-09-12",
+      "value": "26558.3072"
+    },
+    {
+      "date": "2025-01-01",
+      "realtime_start": "2026-09-12",
+      "realtime_end": "2026-09-12",
+      "value": "25586.6379"
+    },
+    {
+      "date": "2025-04-01",
+      "realtime_start": "2026-09-12",
+      "realtime_end": "2026-09-12",
+      "value": "25714.8241"
+    },
+    {
+      "date": "2025-07-01",
+      "realtime_start": "2026-09-12",
+      "realtime_end": "2026-09-12",
+      "value": "27346.2904"
+    },
+    {
+      "date": "2025-10-01",
+      "realtime_start": "2026-09-12",
+      "realtime_end": "2026-09-12",
+      "value": "25350.2994"
+    }
+  ]
+}

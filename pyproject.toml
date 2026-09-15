@@ -4,10 +4,15 @@
 # The distribution name and the PEP 440 version declared here are the single
 # version authority for the package.
 name = "portlearn"
-version = "0.0.1.dev0"
+version = "0.0.1.dev1"
 
 # Minimum supported Python; no untested upper-version exclusion.
 requires-python = ">=3.11"
+
+# Runtime dependencies: pandas is the sole unconditional core runtime
+# dependency — evidence-supported floor
+# (first Python-3.13-compatible release), no upper cap.
+dependencies = ["pandas>=2.2.3"]
 
 # Public packaging metadata (PEP 621): one-line description of present
 # functionality only; README and licence referenced, never duplicated.
@@ -20,13 +25,21 @@ license = "Apache-2.0"
 Repository = "https://github.com/fmasoudy/PortLearn"
 Issues = "https://github.com/fmasoudy/PortLearn/issues"
 
-# No runtime dependencies and no optional capability groups.
+# The two optional capability groups:
+# pyarrow is pulled only by portlearn[parquet] and matplotlib only by
+# portlearn[plot]; neither is ever imported by the core package.
+[project.optional-dependencies]
+parquet = ["pyarrow>=21.0.0,<26"]
+plot = ["matplotlib>=3.9.2"]
 
-# Development dependencies: the test harness and the source-quality checker.
+# Development dependencies: the test harness, the source-quality checker,
+# and the plotting stack at exactly the plot-extra requirement,
+# so a development environment can exercise the renderer.
 [dependency-groups]
 dev = [
     "pytest>=9.1.1,<10",
     "ruff>=0.16.6,<0.17",
+    "matplotlib>=3.9.2",
 ]
 
 # Standards-based PEP 517 build backend, bounded.

@@ -1,0 +1,8 @@
+{
+  "id": "SYNTHDFFD",
+  "title": "Synthetic Daily Effective Federal Funds Rate (SYNTHETIC REPLICA)",
+  "units": "Percent (synthetic)",
+  "frequency": "Daily",
+  "seasonal_adjustment": "Not Seasonally Adjusted (synthetic)",
+  "notes": "This product uses the FRED(R) API but is not endorsed by or certified by the Federal Reserve Bank of St. Louis. Synthetic replica fixture: invented values in the provider response format; contains no provider-owned data."
+}
