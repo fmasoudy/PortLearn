@@ -1,3 +1,10 @@
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/assets/brand/png/monochrome/portlearn-logo-horizontal-white.png">
+    <img src="docs/assets/brand/png/primary/portlearn-logo-horizontal.png" alt="PortLearn logo: a rounded navy-and-teal PL monogram with a segmented circular motif, beside the PortLearn wordmark" width="460">
+  </picture>
+</p>
+
 # PortLearn
 
 PortLearn is a finance-first research framework for controlled, reproducible, and modular experimentation in machine-learned portfolio choice.
@@ -23,6 +30,10 @@ PortLearn aims to provide reusable infrastructure for:
 
 PortLearn is a research toolkit, not a repository for individual paper-specific models or unpublished research architectures.
 
+## Brand Assets
+
+The PortLearn logo and icon set live in [`docs/assets/brand/`](docs/assets/brand/), with usage guidance (which lockup for which context, including PyPI presentation) in [`docs/assets/brand/README.md`](docs/assets/brand/README.md).
+
 ## Roadmap
 
 PortLearn is under active research development. This roadmap is intentionally high-level: it communicates broad direction only, is subject to change as the research framework develops, and does not promise dates or specific functionality.
@@ -32,15 +43,18 @@ PortLearn is under active research development. This roadmap is intentionally hi
 - Research foundation: time/chronology contracts, observation handling, information sets, and the core research interfaces that define how portfolio research components compose.
 - Validation utilities for detecting violations of point-in-time information contracts.
 - Canonical run manifests for recording environment and command provenance.
+- Data access: a researcher-facing data facade (`portlearn.data`) with Fama/French and FRED provider adapters, a sealed research-dataset container with pandas conversion, and availability-aware alignment of mixed-frequency observations on a period calendar.
+- Chronologically valid feature transforms: lags, rolling statistics, scalers, and carry-forward.
+- Contracts for the forecasting and estimation lifecycle (fitting, refitting, forecast timing, tuning, seeds, determinism, provenance); estimators are not provided yet.
+- Descriptive research-dataset diagnostics (summary, correlation, coverage, missingness) with renderer-neutral plotting; rendering is available through the optional `plot` extra.
 
 **Next**
 
-- Datasets and data access: adapters and alignment for market and macro data.
+- Forecasting and estimation methods that implement the lifecycle contracts.
 - Experiment and reproducibility infrastructure.
 
 **Planned**
 
-- Forecasting methods.
 - Portfolio construction and accounting.
 - Later deep-learning and reinforcement-learning research capabilities.
 

@@ -1,0 +1,67 @@
+{
+  "series_id": "SYNTHDFFD",
+  "realtime_start": "2026-09-12",
+  "realtime_end": "2026-09-12",
+  "observations": [
+    {
+      "date": "2026-07-01",
+      "realtime_start": "2026-09-12",
+      "realtime_end": "2026-09-12",
+      "value": "4.7392"
+    },
+    {
+      "date": "2026-07-02",
+      "realtime_start": "2026-09-12",
+      "realtime_end": "2026-09-12",
+      "value": "4.5633"
+    },
+    {
+      "date": "2026-07-03",
+      "realtime_start": "2026-09-12",
+      "realtime_end": "2026-09-12",
+      "value": "4.3564"
+    },
+    {
+      "date": "2026-07-04",
+      "realtime_start": "2026-09-12",
+      "realtime_end": "2026-09-12",
+      "value": "4.8133"
+    },
+    {
+      "date": "2026-07-05",
+      "realtime_start": "2026-09-12",
+      "realtime_end": "2026-09-12",
+      "value": "4.5065"
+    },
+    {
+      "date": "2026-07-06",
+      "realtime_start": "2026-09-12",
+      "realtime_end": "2026-09-12",
+      "value": "4.6685"
+    },
+    {
+      "date": "2026-07-07",
+      "realtime_start": "2026-09-12",
+      "realtime_end": "2026-09-12",
+      "value": "4.4112"
+    },
+    {
+      "date": "2026-07-08",
+      "realtime_start": "2026-09-12",
+      "realtime_end": "2026-09-12",
+      "value": "."
+    },
+    {
+      "date": "2026-07-09",
+      "realtime_start": "2026-09-12",
+      "realtime_end": "2026-09-12",
+      "value": "4.8029"
+    },
+    {
+      "date": "2026-07-10",
+      "realtime_start": "2026-09-12",
+      "realtime_end": "2026-09-12",
+      "value": "4.4456"
+    }
+  ]
+}

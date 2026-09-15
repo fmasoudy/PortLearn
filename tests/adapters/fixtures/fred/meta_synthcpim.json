@@ -1,0 +1,8 @@
+{
+  "id": "SYNTHCPIM",
+  "title": "Synthetic Consumer Price Index for All Urban Consumers: All Items in U.S. City Average (SYNTHETIC REPLICA)",
+  "units": "Index 1982-1984=100, Seasonally Adjusted (synthetic)",
+  "frequency": "Monthly",
+  "seasonal_adjustment": "Seasonally Adjusted Annual Rate (synthetic)",
+  "notes": "This product uses the FRED(R) API but is not endorsed by or certified by the Federal Reserve Bank of St. Louis. Synthetic replica fixture: invented values in the provider response format; contains no provider-owned data."
+}

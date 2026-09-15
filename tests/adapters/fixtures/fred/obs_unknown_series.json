@@ -1,0 +1,6 @@
+{
+  "error": {
+    "code": "400",
+    "message": "The series does not exist. (synthetic replica provider error payload)"
+  }
+}

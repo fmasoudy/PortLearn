@@ -1,0 +1,8 @@
+{
+  "id": "SYNTHGDPQ",
+  "title": "Synthetic Gross Domestic Product (SYNTHETIC REPLICA)",
+  "units": "Billions of Dollars, Seasonally Adjusted Annual Rate (synthetic)",
+  "frequency": "Quarterly",
+  "seasonal_adjustment": "Seasonally Adjusted Annual Rate (synthetic)",
+  "notes": "This product uses the FRED(R) API but is not endorsed by or certified by the Federal Reserve Bank of St. Louis. Synthetic replica fixture: invented values in the provider response format; contains no provider-owned data."
+}
