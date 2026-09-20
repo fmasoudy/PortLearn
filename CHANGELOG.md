@@ -8,6 +8,26 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.0.1.dev2]
+
+### Added
+
+- Portfolio weights: the `portlearn.weights` module with the closed portfolio-role vocabulary, target-weight validation, and immutable weight books.
+- Rebalancing: schedule policies and the drift law carrying held weights across holding segments (`portlearn.rebalance`).
+- Transaction and turnover accounting with proportional transaction-cost models (`portlearn.trades`, `portlearn.turnover`, `portlearn.costs`).
+- The transaction ledger: segment-composed accounting over the wealth path with the reference accounting engine (`portlearn.ledger`).
+- The strategy decision-contract seam — `Strategy.decide(context) -> DecisionResult` over `DecisionContext`, validated by `require_decision_result_compatible`.
+- Lazy module facades for the portfolio modules under the top-level package namespace.
+- Public test modules covering the portfolio-weight, rebalance, transaction, cost, ledger, and decision-contract surfaces.
+
+### Changed
+
+### Fixed
+
+### Deprecated
+
+### Removed
+
 ## [0.0.1.dev1]
 
 ### Added

@@ -135,8 +135,9 @@ def test_fetch_raw_never_reads_credentials_from_the_environment(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """The provider surface never sources a key from the environment:
-    removing every conventional variable still demands the explicit
-    argument (owner law: never ``.env``)."""
+    the API key must be supplied explicitly and is never sourced
+    from environment variables or ``.env`` files — removing every
+    conventional variable still demands the explicit argument."""
     fred = _fred()
     for name in (
         "FRED_API_KEY",

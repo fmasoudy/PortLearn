@@ -1,11 +1,15 @@
 """Core research interfaces for portfolio decisions.
 
-This module freezes the core interface contract: the
+This module defines the core interface contract: the
 admitted-information value object ``InformationSet``, the
 provenance-bearing ``Forecast`` and ``PortfolioDecision`` value
-objects with the deliberately thin ``AccountingResult``, the seven
-structural contracts, and the two compatibility validators
-``require_feature_lineage`` and ``require_forecast_decision_compatible``.
+objects with the deliberately thin ``AccountingResult``, the
+decision-seam value objects ``DecisionContext`` and
+``DecisionResult``, the seven structural contracts,
+and the three compatibility validators
+``require_feature_lineage``,
+``require_forecast_decision_compatible``, and
+``require_decision_result_compatible``.
 
 Four laws are inherited from the timing and observations modules
 without change:
@@ -28,16 +32,16 @@ without change:
   discipline.
 - **No weight arithmetic** — ``Forecast.values`` and
   ``PortfolioDecision.target_weights`` are stored exactly as given;
-  sum-to-one, gross and net exposure, and feasibility conventions are
-  left to later portfolio-weight contracts to freeze, not this
-  module's.
+  sum-to-one, gross and net exposure, and feasibility conventions are left to the portfolio-weight contracts of :mod`portlearn.weights`, not this module's.
 
 Exactly four contracts (``RebalancePolicy``, ``CostModel``,
 ``AccountingEngine``, ``Evaluator``) carry ``@runtime_checkable``,
 because runtime structural checks genuinely exist on those surfaces;
 ``FeatureTransform``, ``Forecaster``, and ``Strategy`` remain
-static-only and are validated behaviorally. The module is stdlib-only
-and imports only from the timing and observations modules.
+static-only and are validated behavioral. The module is stdlib-only
+and imports only from the timing, observations, and weights
+modules: the decision context reuses the ``WeightState`` portfolio-role vocabulary instead of
+defining a second one; ``portlearn.weights`` itself is unchanged).
 """
 
 from __future__ import annotations
@@ -59,13 +63,19 @@ from .timing import (
     require_available_for_decision,
 )
 from .timing import (
-    to_instant as _to_instant,  # timing-owned normalizer reused for comparison only; the private alias keeps the frozen public surface unchanged
+    to_instant as _to_instant,  # timing-owned normalizer reused for comparison only; the private alias avoids widening the public namespace
+)
+from .weights import (  # reuse the weights module's weight-role vocabulary; portlearn.weights itself stays unchanged
+    PortfolioWeights,
+    WeightState,
 )
 
 __all__ = [
     "AccountingEngine",
     "AccountingResult",
     "CostModel",
+    "DecisionContext",
+    "DecisionResult",
     "Evaluator",
     "FeatureTransform",
     "Forecast",
@@ -74,6 +84,7 @@ __all__ = [
     "PortfolioDecision",
     "RebalancePolicy",
     "Strategy",
+    "require_decision_result_compatible",
     "require_feature_lineage",
     "require_forecast_decision_compatible",
 ]
@@ -292,8 +303,7 @@ class PortfolioDecision:
     instrument identifiers to target portfolio weights and is stored
     exactly as given: this interface places no weight constraint of
     any kind — sum-to-one, gross and net exposure, long/short, and
-    feasibility conventions are left to later portfolio-weight
-    contracts to freeze.
+    feasibility conventions are left to the portfolio-weight contracts of :mod`portlearn.weights`.
 
     Construction is fail-closed: both instants must be aware, every
     ``target_weights`` key must be a non-blank exact string, and the
@@ -342,6 +352,170 @@ class AccountingResult:
     post_trade_weights: Mapping[str, float]
 
 
+@dataclass(frozen=True)
+class DecisionContext:
+    """The decision-time aggregate for one portfolio decision.
+
+    Everything dynamic a strategy may condition on at the decision
+    instant, and nothing from after it: the authoritative timing
+    anchor ``decision_time``, the admitted ``information``, the
+    caller-declared ``universe``, the decision-time portfolio
+    snapshot ``current_weights`` with its own ``current_weights_as_of``
+    timestamp, the optional carried ``strategy_state``, and an
+    optional ``forecast``. The timestamped portfolio is exactly these
+    two concrete fields - there is no pseudo-type wrapping them.
+
+    Construction is fail-closed over the admission
+    and alignment laws, in this order:
+
+    1. ``decision_time`` must be an aware instant (naive datetimes
+       and ``datetime.date`` reject with ``NaiveTimestampError``);
+    2. every ``universe`` entry must be a non-blank exact string and
+       no entry may duplicate another (``ValueError``); the
+       caller-declared order is preserved and the sequence is stored
+       as a tuple;
+    3. ``current_weights`` must carry ``WeightState.PRE_TRADE`` - the
+       decision-time snapshot role; ``TARGET`` and ``POST_TRADE``
+       reject with ``ValueError``;
+    4. ``current_weights_as_of`` must be an aware instant satisfying
+       ``current_weights_as_of <= decision_time``
+       (``InvalidChronologyError``);
+    5. ``information.as_of <= decision_time``
+       (``InvalidChronologyError``) - no post-decision information;
+    6. a present ``forecast`` must satisfy
+       ``forecast.decision_time == decision_time``
+       (``InvalidChronologyError``).
+
+    Two laws hold by construction rather than by check. The
+    universe-vs-holdings law: nothing here forces the holdings keys
+    of ``current_weights`` to equal ``universe`` - holdings partially
+    outside the currently investable universe, and vice versa, are
+    lawful. The role law's other half: this snapshot is the
+    decision-time book, not the execution-time pre-trade book -
+    accounting continues to drift the portfolio and determines the
+    execution-time book separately.
+
+    ``strategy_state`` is stored exactly as given and is never
+    mutated by this object; a stateful strategy's transitions are
+    represented solely through ``DecisionResult.next_strategy_state``.
+    """
+
+    decision_time: datetime
+    information: InformationSet
+    universe: tuple[str, ...]
+    current_weights: PortfolioWeights
+    current_weights_as_of: datetime
+    strategy_state: object = None
+    forecast: Forecast | None = None
+
+    def __post_init__(self) -> None:
+        decision_aware = _require_aware_instant(
+            self.decision_time, "decision_time"
+        )
+        decision_instant = _to_instant(
+            decision_aware, "decision_time"
+        )
+        if isinstance(self.universe, str):
+            raise ValueError(  # noqa: TRY004 — the fail-closed surface is ValueError-only, mirroring the blank-identifier law
+                "universe must be a sequence of exact-string "
+                "instrument identifiers in caller-declared order, not "
+                f"a single string; got {self.universe!r}. A single "
+                "string names one instrument, not a universe, so the "
+                "value is rejected fail-closed."
+            )
+        normalized_universe = tuple(self.universe)
+        seen_universe: set[str] = set()
+        for identifier in normalized_universe:
+            _require_identifier(identifier, "the context's universe entry")
+            if identifier in seen_universe:
+                raise ValueError(
+                    f"duplicate universe entry: {identifier!r} appears "
+                    "more than once in the decision context's universe "
+                    "- the universe is a sequence of exact-string "
+                    "instrument identifiers in caller-declared order, "
+                    "so a duplicate names no additional instrument and "
+                    "is rejected fail-closed."
+                )
+            seen_universe.add(identifier)
+        object.__setattr__(self, "universe", normalized_universe)
+        if self.current_weights.state != WeightState.PRE_TRADE:
+            raise ValueError(
+                "current-portfolio role violation: the decision "
+                "context's current_weights must carry "
+                "WeightState.PRE_TRADE - the decision-time snapshot "
+                "of what the portfolio holds - got WeightState."
+                f"{self.current_weights.state.name}. TARGET is what a "
+                "strategy desires and POST_TRADE is what accounting "
+                "produced; neither is a lawful decision-time "
+                "holdings snapshot, so the value is rejected "
+                "fail-closed (the decision-context role law)."
+            )
+        holdings_aware = _require_aware_instant(
+            self.current_weights_as_of, "current_weights_as_of"
+        )
+        holdings_instant = _to_instant(
+            holdings_aware, "current_weights_as_of"
+        )
+        if holdings_instant > decision_instant:
+            raise InvalidChronologyError(
+                "chronology violation: the decision context admits no "
+                "post-decision information, but current_weights_as_of="
+                f"{holdings_instant.isoformat()} follows decision_time="
+                f"{decision_instant.isoformat()}. The current-holdings "
+                "snapshot must be known at or before the decision "
+                "instant it is decided on."
+            )
+        information_instant = _to_instant(
+            self.information.as_of, "the information set's as_of"
+        )
+        if information_instant > decision_instant:
+            raise InvalidChronologyError(
+                "chronology violation: the decision context admits no "
+                "post-decision information, but information.as_of="
+                f"{information_instant.isoformat()} follows "
+                f"decision_time={decision_instant.isoformat()}. The "
+                "information set must be admitted at or before the "
+                "decision instant it is decided on."
+            )
+        if self.forecast is not None:
+            forecast_instant = _to_instant(
+                self.forecast.decision_time,
+                "the forecast's decision_time",
+            )
+            if forecast_instant != decision_instant:
+                raise InvalidChronologyError(
+                    "alignment violation: a forecast carried by the "
+                    "decision context must be dated exactly at the "
+                    "context's authoritative decision_time, but "
+                    "forecast.decision_time="
+                    f"{forecast_instant.isoformat()} differs from "
+                    f"decision_time={decision_instant.isoformat()}. A "
+                    "forecast dated elsewhere belongs to a different "
+                    "decision instant, so the value is rejected "
+                    "fail-closed."
+                )
+
+
+@dataclass(frozen=True)
+class DecisionResult:
+    """The outcome of one strategy decision.
+
+    Exactly two facts: the ``decision`` (a ``PortfolioDecision``) and
+    the ``next_strategy_state`` the strategy carries forward (``None``
+    for a stateless strategy). The state law is fixed: the context's
+    input ``strategy_state`` is never mutated in place - every
+    transition is represented solely by ``next_strategy_state``, and
+    randomness affecting replay is carried explicitly through that
+    state rather than hidden mutable RNG state. The cross-object rules - ``decision.decision_time == context.decision_time``
+    and ``decision.execution_time >= context.decision_time`` - are
+    enforced at this seam by the exported
+    ``require_decision_result_compatible`` validator.
+    """
+
+    decision: PortfolioDecision
+    next_strategy_state: object = None
+
+
 # --------------------------------------------------------------------------- #
 # Structural contracts
 # --------------------------------------------------------------------------- #
@@ -354,7 +528,7 @@ class FeatureTransform(Protocol):
     produces new ``TimedObservation`` records — derived features are
     observations, carrying their own ``series_id``,
     ``observation_time``, ``available_time``, and ``value``, and
-    re-entering every observation law (identity, chronology,
+    re-entering every observation rule (identity, chronology,
     admission) as such. Lineage monotonicity is enforced at this
     surface through the exported ``require_feature_lineage``
     validator, never inside the transform. Static-only: validated
@@ -388,15 +562,25 @@ class Forecaster(Protocol):
 
 
 class Strategy(Protocol):
-    """A strategy turning one forecast into one portfolio decision.
+    """A strategy deciding one portfolio decision from its context.
 
-    The minimal signature takes the forecast alone; pre-trade
-    portfolio state as a further input is out of scope here.
+    ``decide`` consumes exactly one ``DecisionContext`` - the
+    decision-time aggregate of the authoritative
+    ``decision_time``, the admitted ``information``, the
+    caller-declared ``universe``, the decision-time
+    ``current_weights`` snapshot, the carried ``strategy_state``,
+    and an optional ``forecast`` - and returns exactly one
+    ``DecisionResult``. The forecast-only signature
+    ``decide(forecast)`` is not a lawful alternative: the contract
+    admits no compatibility shim, no dual protocol, and no
+    adapter around this seam. The context's ``strategy_state``
+    is never mutated in place; every state transition is
+    represented solely by the result's ``next_strategy_state``.
     Static-only: validated behaviorally, not by ``isinstance``.
     """
 
-    def decide(self, forecast: Forecast) -> PortfolioDecision:
-        """Decide the target portfolio from one forecast."""
+    def decide(self, context: DecisionContext) -> DecisionResult:
+        """Decide the target portfolio from one decision context."""
 
 
 @runtime_checkable
@@ -487,13 +671,12 @@ def require_feature_lineage(
 ) -> None:
     """Assert no derived output is declared available before its inputs.
 
-    Thin reuse of the frozen lineage law: a
+    Thin reuse of the lineage rule: a
     derived feature may not be declared available before the latest
     input it derives from, and a feature with an empty input collection
     has no defensible availability at all. The input availabilities
     are collected once and each output's availability is checked by
-    ``require_lineage_monotone`` — the law, the errors, and the
-    empty-input rejection all remain the observations module's;
+    ``require_lineage_monotone`` — the rule, the errors, and the empty-input rejection all remain the observations module's;
     nothing is redefined here.
 
     Raises ``FeatureLineageError`` (from ``portlearn.observations``)
@@ -536,4 +719,55 @@ def require_forecast_decision_compatible(
             f"the forecast's decision_time="
             f"{forecast_origin.isoformat()}. Deciding on information "
             "requires the information to exist first."
+        )
+
+
+def require_decision_result_compatible(
+    context: DecisionContext, result: DecisionResult
+) -> None:
+    """Assert a decision result is anchored at its decision context.
+
+    The context's ``decision_time`` is the single authoritative
+    timing anchor of the decision instant, so the returned decision
+    must be dated exactly there:
+    ``result.decision.decision_time == context.decision_time`` - and
+    may not execute before it:
+    ``result.decision.execution_time >= context.decision_time``
+    (same-instant decide-and-execute is admissible). All compared
+    instants are normalized with the timing-owned normalizer, so
+    naive or date-valued instants reject with ``NaiveTimestampError``
+    before any comparison.
+
+    Raises ``InvalidChronologyError`` (from ``portlearn.timing``) on
+    violation; returns ``None`` otherwise.
+    """
+    context_instant = _to_instant(
+        context.decision_time, "the context's decision_time"
+    )
+    result_decision_instant = _to_instant(
+        result.decision.decision_time,
+        "the result decision's decision_time",
+    )
+    if result_decision_instant != context_instant:
+        raise InvalidChronologyError(
+            "chronology violation: a strategy's decision must be "
+            "dated exactly at its decision context's authoritative "
+            "decision_time, but result.decision.decision_time="
+            f"{result_decision_instant.isoformat()} differs from "
+            f"context.decision_time={context_instant.isoformat()}. "
+            "The decision instant must not become implicit again."
+        )
+    execution_instant = _to_instant(
+        result.decision.execution_time,
+        "the result decision's execution_time",
+    )
+    if execution_instant < context_instant:
+        raise InvalidChronologyError(
+            "chronology violation: a strategy's decision cannot "
+            "execute before its decision context's decision_time, "
+            "but result.decision.execution_time="
+            f"{execution_instant.isoformat()} precedes "
+            f"context.decision_time={context_instant.isoformat()}. "
+            "Same-instant decide-and-execute is admissible; a "
+            "reversed order is not."
         )

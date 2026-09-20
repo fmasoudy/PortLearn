@@ -8,7 +8,7 @@ facade holds no privileged dataset-construction access: it
 obtains datasets through exactly the public canonical constructors any
 external integrator would use.
 
-The fetch path always begins at the frozen retrieval-only sibling
+The fetch path always begins at the retrieval-only sibling
 (:func:`~portlearn.data.adapters.ff.fetch_raw`): the provider's exact
 bytes plus typed retrieval facts, hash-pinned end-to-end.  The raw load
 is UNQUALIFIED — no availability anywhere.  The qualified one-step load

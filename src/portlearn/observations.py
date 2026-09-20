@@ -1,6 +1,6 @@
 """Point-in-time observations, vintages, and feature lineage.
 
-This module freezes the information semantics:
+This module defines the information semantics:
 
 - **Data law** — data is what observations exist: records carrying both
   ``observation_time`` (when the underlying phenomenon is dated) and
@@ -42,7 +42,7 @@ from .timing import (
     InvalidChronologyError,
     MissingAvailabilityError,
     NaiveTimestampError,  # noqa: F401  # re-exported: raised at this surface by the validator from portlearn.timing
-    _require_aware_instant,  # noqa: F401  # re-exported: the shared validator from portlearn.timing, imported per the reuse law
+    _require_aware_instant,  # noqa: F401  # re-exported: the shared validator from portlearn.timing, imported to preserve object identity
     instant_key,
     to_instant,
 )
@@ -126,11 +126,11 @@ class TimedObservation:
     value: Any
 
     def __post_init__(self) -> None:
-        # ValueError (not TypeError) is pinned for non-string identifiers:
+        # Non-string identifiers raise ValueError rather than TypeError:
         # the built-in ValueError is the closed-taxonomy choice for every
         # malformed series_id, non-string included.
         if not isinstance(self.series_id, str):
-            raise ValueError(  # noqa: TRY004 — pinned for malformed identifiers
+            raise ValueError(  # noqa: TRY004 — malformed identifiers raise ValueError
                 "series_id must be a string identifier naming the series "
                 "the observation belongs to; got "
                 f"{type(self.series_id).__name__}: {self.series_id!r}. "

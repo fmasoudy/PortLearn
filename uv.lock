@@ -808,7 +808,7 @@ wheels = [
 
 [[package]]
 name = "portlearn"
-version = "0.0.1.dev1"
+version = "0.0.1.dev2"
 source = { editable = "." }
 dependencies = [
     { name = "pandas" },

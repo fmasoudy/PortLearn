@@ -6,7 +6,7 @@ single ``transform`` method; there is no registry and no feature
 library — this module ships concrete transforms and never widens the
 protocol surface):
 
-- **L1 — window membership keys on availability.** Every windowed
+- **Window membership keys on availability.** Every windowed
   transform declares its window over records' ``available_time``; a
   record whose ``available_time`` is after the output's reference
   instant is never a window member, no matter when the underlying
@@ -14,46 +14,46 @@ protocol surface):
   alone would admit revised values that did not exist when the output
   feature is timestamped — the named leakage pattern this module
   exists to make structurally absent.
-- **L2 — output timing is lineage-monotone by construction.** Every
+- **Output timing is lineage-monotone by construction.** Every
   output's ``available_time`` is at or after the latest
   ``available_time`` among the records that output derives from, and
   the output's ``observation_time`` is the transform's declared
   reference instant (for rolling windows, the window end in
   availability order). Outputs are ``TimedObservation`` records that
-  re-enter every observation law. This module never re-implements the
-  lineage law: validation is the frozen exported
+  re-enter every observation rule. This module never re-implements the
+  lineage check: validation is the exported
   ``require_feature_lineage`` validator's job, composed by users and
   tests.
-- **L3 — explicit fitting windows.** Scaling transforms declare their
+- **Explicit fitting windows.** Scaling transforms declare their
   fitting window as the exact sequence of admitted records the
   statistics are computed over; the window's extent is recorded in
   provenance, and ``transform`` applies the frozen statistics — never
   recomputing them, never absorbing transform-time records into them.
-  The fit-window cutoff is declared and recorded, in the same
-  admission vocabulary later milestones compose (one fit-cutoff
+  The fit-window cutoff is declared and recorded, in the shared
+  admission vocabulary used across the library (one fit-cutoff
   concept, no transform-local second clock).
-- **L4 — insufficient windows fail closed.** Fewer records than a
+- **Insufficient windows fail closed.** Fewer records than a
   declared window requires — or a scaler fit window with no spread —
   raises ``InsufficientWindowError``, this module's own
   ``ValueError``. Never NaN emission, never partial-window output,
   never silent imputation: a feature either has full, knowable
   support or does not exist.
-- **L5 — no future normalization.** Scaler statistics are computed
+- **No future normalization.** Scaler statistics are computed
   only over the declared fitting window's past-available records, and
   every scaled output's ``available_time`` is floored at the fit
   window's latest availability: statistics that include a record not
   available until some instant are themselves knowable only then, and
   no output dated earlier can carry them.
-- **L6 — lag is a position shift with an availability floor.** The
+- **Lag is a position shift with an availability floor.** The
   lagged value keeps the input value; the output
   ``observation_time`` is the input's shifted by the declared number
   of periods of the series' own declared frequency; the output
   ``available_time`` is the later of the original availability and
   the shifted observation instant — lagging can delay availability,
   never advance it, and the floor keeps every output constructible
-  under the frozen chronology law
+  under the chronology requirement
   (``available_time >= observation_time``).
-- **L7 — carry-forward is bounded and declared.** At each declared
+- **Carry-forward is bounded and declared.** At each declared
   reference instant the carried value is the most recent record
   available by then, provided its staleness is within the declared
   bound; beyond the bound — and before the series starts — the
@@ -61,25 +61,24 @@ protocol surface):
   real-time surface re-stamps the carried value at the reference
   instant instead of the phenomenon date; the choice is declared and
   recorded in provenance.
-- **L9 — no default lookbacks.** Every lookback length, lag period,
+- **No default lookbacks.** Every lookback length, lag period,
   frequency, staleness bound, and fitting window is an explicit
   required constructor parameter recorded in provenance; none is
   ever tuned, defaulted, or selected by validation performance, and
   no indicator is named for a paper.
-- **L10 — error taxonomy.** Structural declaration failures
+- **Error taxonomy.** Structural declaration failures
   (malformed window, bad frequency, negative staleness) raise this
   module's own ``ValueError`` subclasses; timing, identity, and
-  lineage failures reuse the frozen contract errors with their fixed
-  module ownership (``NaiveTimestampError`` through the frozen
-  normalizer, ``AmbiguousObservationError`` for mixed-series input).
-  ``portlearn/__init__.py`` and ``FROZEN_CONTRACT_ERRORS`` are
-  untouched.
-- **L11 — wrappers are researcher-side.** This module ships no
+  lineage failures reuse ``FROZEN_CONTRACT_ERRORS`` with their fixed
+  module ownership (``NaiveTimestampError`` through the timing
+  module's normalizer, ``AmbiguousObservationError`` for mixed-series
+  input). ``portlearn/__init__.py`` and ``FROZEN_CONTRACT_ERRORS``
+  are untouched.
+- **Wrappers are researcher-side.** This module ships no
   third-party wrapper: a researcher-side callable adapting a foreign
-  implementation to the frozen protocol grants no exemption from any
-  law, and the contract tests exercise the pattern with a
-  dependency-free stand-in. Return/change transforms are deferred by
-  decision and are not present here.
+  implementation to the ``FeatureTransform`` protocol grants no
+  exemption from any rule above, and the contract tests exercise the
+  pattern with a dependency-free stand-in. Return/change transforms are not provided by this module.
 
 Every transform is single-series (cross-series features are
 researcher compositions) and stdlib-only: pure functions over record
@@ -110,7 +109,7 @@ __all__ = [
 
 
 # --------------------------------------------------------------------------- #
-# Fail-closed error taxonomy — the module-owned structural arm (L10)
+# Fail-closed error taxonomy — the module-owned structural arm
 # --------------------------------------------------------------------------- #
 
 
@@ -120,8 +119,9 @@ class WindowDeclarationError(ValueError):
     Raised for a non-integral or non-positive lookback length, a
     non-positive lag period, a lag frequency without strictly positive
     length, or a negative carry-forward staleness bound. Declaration
-    parameters are explicit by law (no default lookbacks), so a value
-    that names no usable window fails closed rather than defaulting.
+    parameters are explicit by contract (no default lookbacks), so a
+    value that names no usable window fails closed rather than
+    defaulting.
     """
 
 
@@ -193,7 +193,7 @@ def _require_non_negative_timedelta(value: Any, name: str) -> timedelta:
 
 
 def _materialize(observations: Iterable[TimedObservation]) -> list[TimedObservation]:
-    """Materialize input and enforce the single-series law (fail closed)."""
+    """Materialize input and enforce the single-series rule (fail closed)."""
     records = list(observations)
     series = {record.series_id for record in records}
     if len(series) > 1:
@@ -208,9 +208,9 @@ def _materialize(observations: Iterable[TimedObservation]) -> list[TimedObservat
 
 
 def _availability_sorted(records: list[TimedObservation]) -> list[TimedObservation]:
-    """Order records by availability instant (the L1 comparison basis).
+    """Order records by availability instant (the comparison basis).
 
-    The sort key is the frozen UTC normalizer, so fold ambiguity and
+    The sort key is the shared UTC normalizer, so fold ambiguity and
     mixed zones never reorder records; the sort is stable, so records
     sharing one availability instant keep submission order.
     """
@@ -245,7 +245,7 @@ def _scaled_output(
 
     The output keeps the record's own ``observation_time``; its
     ``available_time`` is the later of the record's availability and
-    the fit window's latest availability (L5): statistics that saw a
+    the fit window's latest availability: statistics that saw a
     record not available until some instant are knowable only then.
     """
     if instant_key(record.available_time) >= fit_latest_instant:
@@ -298,19 +298,19 @@ def _require_spread(values: list[float], transform_name: str) -> None:
 
 
 # --------------------------------------------------------------------------- #
-# Rolling window transforms (L1/L2/L4)
+# Rolling window transforms
 # --------------------------------------------------------------------------- #
 
 
 class RollingMean:
     """The arithmetic mean over the last ``window`` available records.
 
-    Window membership keys on ``available_time`` (L1): records are
+    Window membership keys on ``available_time``: records are
     ordered by availability, and each output derives from the ``window``
     records latest available at the output's reference instant — the
     window end in availability order, which is also the output's
-    ``observation_time`` and ``available_time`` (L2). Fewer records
-    than the window requires fail closed (L4).
+    ``observation_time`` and ``available_time``. Fewer records
+    than the window requires fail closed.
     """
 
     def __init__(self, window: int) -> None:
@@ -352,10 +352,9 @@ class RollingMean:
 class RollingVolatility:
     """The population standard deviation over the last ``window`` available records.
 
-    The same availability-keyed window law as ``RollingMean`` (L1/L2),
+    The same availability-keyed window definition as ``RollingMean``,
     with the population standard deviation as the declared volatility
-    estimator over available members; alternative estimators are
-    deferred by decision, each requiring its own leakage audit.
+    estimator over available members; alternative estimators are not provided; each would require its own leakage audit.
     """
 
     def __init__(self, window: int) -> None:
@@ -395,7 +394,7 @@ class RollingVolatility:
 
 
 # --------------------------------------------------------------------------- #
-# Lag (L6)
+# Lag
 # --------------------------------------------------------------------------- #
 
 
@@ -407,7 +406,7 @@ class Lag:
     ``available_time`` is the later of the original availability and
     the shifted observation instant — lagging can delay availability,
     never advance it, and the floor keeps every output constructible
-    under the frozen chronology law
+    under the chronology requirement
     (``available_time >= observation_time``).
     """
 
@@ -457,7 +456,7 @@ class Lag:
 
 
 # --------------------------------------------------------------------------- #
-# Carry-forward (L7)
+# Carry-forward
 # --------------------------------------------------------------------------- #
 
 
@@ -473,7 +472,7 @@ class CarryForward:
     (the phenomenon date); with ``real_time_surface`` declared, the
     output is re-stamped at the reference instant instead. Every
     output's ``available_time`` is the reference instant, so lineage
-    monotonicity holds by construction (L2).
+    monotonicity holds by construction.
     """
 
     def __init__(
@@ -485,7 +484,7 @@ class CarryForward:
         self._max_staleness = _require_non_negative_timedelta(
             max_staleness, "max_staleness"
         )
-        # Reference instants are declared, validated by the frozen
+        # Reference instants are declared, validated by the shared
         # normalizer (naive inputs reject fail-closed), and recorded in
         # instant order — the declared surface the transform answers at.
         self._reference_instants = tuple(
@@ -549,7 +548,7 @@ class CarryForward:
 
 
 # --------------------------------------------------------------------------- #
-# Scaling transforms (L3/L5)
+# Scaling transforms
 # --------------------------------------------------------------------------- #
 
 
@@ -558,12 +557,12 @@ class StandardScaler:
 
     The fitting window is the exact sequence of admitted records given
     at construction; the mean and population standard deviation are
-    computed over it once, recorded in provenance, and frozen (L3).
-    ``transform`` applies the frozen statistics record by record and
-    floors every output's ``available_time`` at the fit window's
-    latest availability (L5), so no output can carry statistics
+    computed over it once, recorded in provenance, and fixed
+    thereafter. ``transform`` applies the frozen statistics record by
+    record and floors every output's ``available_time`` at the fit
+    window's latest availability, so no output can carry statistics
     before they are knowable. A fit window with fewer than two
-    records or no spread rejects fail-closed (L4).
+    records or no spread rejects fail-closed.
     """
 
     def __init__(self, fit_records: Iterable[TimedObservation]) -> None:
@@ -611,7 +610,7 @@ class StandardScaler:
 class MinMaxScaler:
     """Min-max normalization by statistics frozen over a declared fit window.
 
-    The same fit-window law as ``StandardScaler`` (L3/L5/L4) with the
+    The same fit-window definition as ``StandardScaler`` with the
     minimum and maximum as the frozen statistics; a fit window with no
     range (every value equal) rejects fail-closed rather than dividing
     by zero.

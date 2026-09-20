@@ -25,7 +25,7 @@ PYPROJECT_PATH = REPOSITORY_ROOT / "pyproject.toml"
 
 # Frozen package-contract values.
 DISTRIBUTION_NAME = "portlearn"
-FROZEN_DEVELOPMENT_VERSION = "0.0.1.dev1"
+FROZEN_DEVELOPMENT_VERSION = "0.0.1.dev2"
 REQUIRES_PYTHON = ">=3.11"
 BUILD_REQUIRES = ["hatchling>=1.32.0,<2"]
 BUILD_BACKEND = "hatchling.build"

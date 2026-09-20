@@ -21,9 +21,8 @@ def __getattr__(name: str) -> Any:
     """Lazily import one public name, or fail with the module error.
 
     ``ResearchDataset`` — the provider-neutral sealed two-state
-    container — imports lazily like the provider facades, so the
-    package's import side-effect laws hold exactly as before: a bare
-    ``import portlearn.data`` still registers this package alone (the
+    container — imports lazily like the provider facades, preserving the package's import side-effect guarantees: a bare
+    ``import portlearn.data`` registers this package alone (the
     dataset module, and with it pandas, loads only on first use).  The
     state types (``UnqualifiedDataset``/``QualifiedDataset``) stay
     internal to :mod:`portlearn.data.dataset`.  The diagnostics

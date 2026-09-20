@@ -1,9 +1,10 @@
 """Interface-contract tests for portlearn.
 
 These tests freeze the core research interface contract: InformationSet,
-FeatureTransform, Forecaster/Forecast, Strategy/PortfolioDecision, the
+FeatureTransform, Forecaster/Forecast, Strategy with the
+DecisionContext/DecisionResult decision seam, PortfolioDecision, the
 four runtime-checkable structural contracts, AccountingResult, and the
-two validators.  Coverage is organized as a composition matrix over
+three validators.  Coverage is organized as a composition matrix over
 synthetic collaborators, a rejection matrix of malformed inputs and
 contract violations, and structural and behavioral pins on the public
 surface — the exact exported-name set, the frozen five-time vocabulary,
@@ -35,6 +36,7 @@ from portlearn.timing import (
     NaiveTimestampError,
     require_available_for_decision,
 )
+from portlearn.weights import PortfolioWeights, WeightState
 
 MELBOURNE = timezone(timedelta(hours=11))
 
@@ -188,19 +190,24 @@ def test_synthetic_forecaster_returns_forecast_dated_at_set_as_of() -> None:
 
 def test_synthetic_strategy_decision_dated_at_or_after_forecast_and_compatible() -> None:
     from portlearn.interfaces import (
+        DecisionContext,
+        DecisionResult,
         Forecast,
         InformationSet,
         PortfolioDecision,
+        require_decision_result_compatible,
         require_forecast_decision_compatible,
     )
 
     class _EqualWeightStrategy:
-        def decide(self, incoming_forecast):
-            decided_at = incoming_forecast.decision_time + timedelta(hours=1)
-            return PortfolioDecision(
-                decision_time=decided_at,
-                execution_time=decided_at + timedelta(minutes=15),
-                target_weights=dict(WEIGHTS_EQUAL_PAIR),
+        def decide(self, context):
+            decided_at = context.decision_time
+            return DecisionResult(
+                decision=PortfolioDecision(
+                    decision_time=decided_at,
+                    execution_time=decided_at + timedelta(minutes=30),
+                    target_weights=dict(WEIGHTS_EQUAL_PAIR),
+                )
             )
 
     information_set = InformationSet([observation()], DECISION_INSTANT)
@@ -210,10 +217,23 @@ def test_synthetic_strategy_decision_dated_at_or_after_forecast_and_compatible()
         decision_time=information_set.as_of,
         produced_by="synthetic-mean-forecaster",
     )
-    decision = _EqualWeightStrategy().decide(forecast)
-    assert forecast.decision_time < decision.decision_time
+    context = DecisionContext(
+        decision_time=information_set.as_of,
+        information=information_set,
+        universe=("EQUITY.ASX.WOW", "EQUITY.ASX.CBA"),
+        current_weights=PortfolioWeights(
+            dict(WEIGHTS_EQUAL_PAIR), WeightState.PRE_TRADE
+        ),
+        current_weights_as_of=BEFORE_DECISION,
+        forecast=forecast,
+    )
+    result = _EqualWeightStrategy().decide(context)
+    decision = result.decision
+    assert forecast.decision_time == decision.decision_time
     assert decision.decision_time <= decision.execution_time
+    assert result.next_strategy_state is None
     assert require_forecast_decision_compatible(forecast, decision) is None
+    assert require_decision_result_compatible(context, result) is None
 
 
 def test_rebalance_policy_runtime_checkable_presence_discriminates() -> None:
@@ -291,6 +311,8 @@ def test_evaluator_runtime_checkable_presence_discriminates() -> None:
 def test_full_chain_composes_end_to_end_on_synthetic_data() -> None:
     from portlearn.interfaces import (
         AccountingResult,
+        DecisionContext,
+        DecisionResult,
         Forecast,
         InformationSet,
         PortfolioDecision,
@@ -306,12 +328,14 @@ def test_full_chain_composes_end_to_end_on_synthetic_data() -> None:
             )
 
     class _EqualWeightStrategy:
-        def decide(self, incoming_forecast):
-            decided_at = incoming_forecast.decision_time + timedelta(hours=1)
-            return PortfolioDecision(
-                decision_time=decided_at,
-                execution_time=decided_at + timedelta(minutes=15),
-                target_weights=dict(WEIGHTS_EQUAL_PAIR),
+        def decide(self, context):
+            decided_at = context.decision_time
+            return DecisionResult(
+                decision=PortfolioDecision(
+                    decision_time=decided_at,
+                    execution_time=decided_at + timedelta(minutes=30),
+                    target_weights=dict(WEIGHTS_EQUAL_PAIR),
+                )
             )
 
     class _TwoWayFeeAccountingEngine:
@@ -330,16 +354,28 @@ def test_full_chain_composes_end_to_end_on_synthetic_data() -> None:
         DECISION_INSTANT,
     )
     forecast = _MeanReversionForecaster().forecast(information_set)
-    decision = _EqualWeightStrategy().decide(forecast)
 
-    # The pre-trade weights and realized returns below are fabricated
-    # literally in this test body — no interface in this module
-    # produces or validates them.
-    pre_trade_weights = {"EQUITY.ASX.WOW": 0.6, "EQUITY.ASX.CBA": 0.4}
+    # The current-holdings snapshot and realized returns below are
+    # fabricated literally in this test body — no interface in this
+    # module produces or validates them. The snapshot enters the
+    # decision context as the decision-time current_weights book; the
+    # accounting engine still receives the plain mapping.
+    current_snapshot = {"EQUITY.ASX.WOW": 0.6, "EQUITY.ASX.CBA": 0.4}
     realized_returns = {"EQUITY.ASX.WOW": -0.021, "EQUITY.ASX.CBA": 0.017}
+    context = DecisionContext(
+        decision_time=information_set.as_of,
+        information=information_set,
+        universe=("EQUITY.ASX.WOW", "EQUITY.ASX.CBA"),
+        current_weights=PortfolioWeights(
+            dict(current_snapshot), WeightState.PRE_TRADE
+        ),
+        current_weights_as_of=BEFORE_DECISION,
+        forecast=forecast,
+    )
+    decision = _EqualWeightStrategy().decide(context).decision
 
     accounting_result = _TwoWayFeeAccountingEngine().account(
-        decision, pre_trade_weights, realized_returns
+        decision, current_snapshot, realized_returns
     )
     assert isinstance(accounting_result, AccountingResult)
     evaluation = _RatioEvaluator().evaluate(accounting_result)
@@ -620,7 +656,7 @@ def test_blank_identifier_keys_rejected() -> None:
 # ---------------------------------------------------------------------------
 
 
-def test_surface_exports_exactly_eleven_names_plus_two_validators() -> None:
+def test_surface_exports_exactly_thirteen_names_plus_three_validators() -> None:
     import portlearn.interfaces
 
     interfaces = portlearn.interfaces
@@ -637,12 +673,15 @@ def test_surface_exports_exactly_eleven_names_plus_two_validators() -> None:
             "CostModel",
             "AccountingEngine",
             "Evaluator",
+            "DecisionContext",
+            "DecisionResult",
+            "require_decision_result_compatible",
             "require_feature_lineage",
             "require_forecast_decision_compatible",
         }
     )
     exported = interfaces.__all__
-    assert len(exported) == 13
+    assert len(exported) == 16
     assert set(exported) == expected_surface
     assert list(exported) == sorted(exported)
 
@@ -666,6 +705,8 @@ def test_surface_exports_exactly_eleven_names_plus_two_validators() -> None:
             "InvalidChronologyError",
             "NaiveTimestampError",
             "require_available_for_decision",
+            "PortfolioWeights",
+            "WeightState",
         }
     )
     public_names = {
@@ -696,6 +737,8 @@ def test_no_time_fields_beyond_the_five_time_law() -> None:
         "Forecast",
         "PortfolioDecision",
         "AccountingResult",
+        "DecisionContext",
+        "DecisionResult",
     ):
         contract = getattr(interfaces, exported)
         for parameter in inspect.signature(contract).parameters:
@@ -802,7 +845,7 @@ def test_interfaces_imports_are_stdlib_and_portlearn_only() -> None:
                 assert alias.name.split(".")[0] in sys.stdlib_module_names
         elif isinstance(node, ast.ImportFrom):
             if node.level:
-                assert node.module in {"observations", "timing"}
+                assert node.module in {"observations", "timing", "weights"}
             else:
                 assert (node.module or "").split(".")[0] in (
                     sys.stdlib_module_names
@@ -1018,8 +1061,8 @@ def test_strategy_protocol_is_static_only() -> None:
     from portlearn.interfaces import Strategy
 
     class _BuyAndHoldStrategy:
-        def decide(self, forecast):
-            return forecast
+        def decide(self, context):
+            return context
 
     with pytest.raises(TypeError):
         isinstance(_BuyAndHoldStrategy(), Strategy)
@@ -1107,3 +1150,207 @@ def test_exactly_four_runtime_checkable_protocols() -> None:
     for static_only in (FeatureTransform, Forecaster, Strategy):
         with pytest.raises(TypeError):
             isinstance(desk, static_only)
+
+
+# ---------------------------------------------------------------------------
+# DecisionContext and DecisionResult contract laws (the decision seam)
+# ---------------------------------------------------------------------------
+
+
+def decision_context(**overrides):
+    """One lawful decision context for the decision-law tests."""
+    from typing import Any
+
+    from portlearn.interfaces import DecisionContext, InformationSet
+
+    kwargs: dict[str, Any] = {
+        "decision_time": DECISION_INSTANT,
+        "information": InformationSet([observation()], DECISION_INSTANT),
+        "universe": ("EQUITY.ASX.WOW", "EQUITY.ASX.CBA"),
+        "current_weights": PortfolioWeights(
+            dict(WEIGHTS_EQUAL_PAIR), WeightState.PRE_TRADE
+        ),
+        "current_weights_as_of": BEFORE_DECISION,
+    }
+    kwargs.update(overrides)
+    return DecisionContext(**kwargs)
+
+
+def test_decision_context_requires_aware_instants() -> None:
+    for naive_instant in (NAIVE_INSTANT, CALENDAR_DATE):
+        with pytest.raises(NaiveTimestampError):
+            decision_context(decision_time=naive_instant)
+        with pytest.raises(NaiveTimestampError):
+            decision_context(current_weights_as_of=naive_instant)
+
+
+def test_decision_context_rejects_post_decision_information() -> None:
+    from portlearn.interfaces import InformationSet
+
+    late_set = InformationSet([observation()], AFTER_DECISION)
+    with pytest.raises(InvalidChronologyError):
+        decision_context(information=late_set)
+
+
+def test_decision_context_rejects_late_holdings_snapshot() -> None:
+    with pytest.raises(InvalidChronologyError):
+        decision_context(current_weights_as_of=AFTER_DECISION)
+
+
+def test_decision_context_rejects_misaligned_forecast() -> None:
+    from portlearn.interfaces import Forecast
+
+    for other_origin in (BEFORE_DECISION, AFTER_DECISION):
+        misaligned = Forecast(
+            values={"EQUITY.ASX.WOW": 0.031},
+            target="expected_return",
+            decision_time=other_origin,
+            produced_by="synthetic-mean-forecaster",
+        )
+        with pytest.raises(InvalidChronologyError):
+            decision_context(forecast=misaligned)
+
+
+def test_decision_context_admits_boundary_and_cross_zone_alignment() -> None:
+    from portlearn.interfaces import Forecast
+
+    # MELBOURNE_EQUAL_INSTANT is the same instant as DECISION_INSTANT in
+    # another zone: law (d) holds by instant, not by wall clock.
+    forecast = Forecast(
+        values={"EQUITY.ASX.WOW": 0.031},
+        target="expected_return",
+        decision_time=MELBOURNE_EQUAL_INSTANT,
+        produced_by="synthetic-mean-forecaster",
+    )
+    context = decision_context(
+        current_weights_as_of=DECISION_INSTANT, forecast=forecast
+    )
+    assert context.forecast is forecast
+    assert context.strategy_state is None
+    assert context.universe == ("EQUITY.ASX.WOW", "EQUITY.ASX.CBA")
+
+
+def test_decision_context_current_weights_must_be_pre_trade() -> None:
+    for wrong_role in (WeightState.TARGET, WeightState.POST_TRADE):
+        with pytest.raises(ValueError):
+            decision_context(
+                current_weights=PortfolioWeights(
+                    dict(WEIGHTS_EQUAL_PAIR), wrong_role
+                )
+            )
+
+
+def test_decision_context_universe_is_exact_unique_ordered() -> None:
+    ordered = ("EQUITY.ASX.CBA", "EQUITY.ASX.WOW", "EQUITY.ASX.TLS")
+    context = decision_context(universe=list(ordered))
+    assert context.universe == ordered
+    assert isinstance(context.universe, tuple)
+
+    with pytest.raises(ValueError):
+        decision_context(universe=("EQUITY.ASX.WOW", "EQUITY.ASX.WOW"))
+    with pytest.raises(ValueError):
+        decision_context(universe=("EQUITY.ASX.WOW", "   "))
+    with pytest.raises(ValueError):
+        decision_context(universe=(42, "EQUITY.ASX.WOW"))
+    with pytest.raises(ValueError):
+        decision_context(universe="EQUITY.ASX.WOW")
+
+
+def test_decision_context_universe_and_holdings_need_not_match() -> None:
+    # Universe-vs-holdings law: held CBA outside the investable
+    # universe and newly eligible TLS inside it are both lawful.
+    context = decision_context(
+        universe=("EQUITY.ASX.WOW", "EQUITY.ASX.TLS"),
+        current_weights=PortfolioWeights(
+            dict(WEIGHTS_EQUAL_PAIR), WeightState.PRE_TRADE
+        ),
+    )
+    assert "EQUITY.ASX.CBA" in context.current_weights.weights
+    assert "EQUITY.ASX.CBA" not in context.universe
+
+
+def test_decision_context_is_frozen_and_stores_state_as_given() -> None:
+    carried = {"step": 3}
+    context = decision_context(strategy_state=carried)
+    assert context.strategy_state is carried
+    with pytest.raises(FrozenInstanceError):
+        context.universe = ("EQUITY.ASX.WOW",)
+
+
+def test_require_decision_result_compatible_rejects_unanchored() -> None:
+    from portlearn.interfaces import (
+        DecisionResult,
+        PortfolioDecision,
+        require_decision_result_compatible,
+    )
+
+    early = PortfolioDecision(
+        decision_time=BEFORE_DECISION,
+        execution_time=DECISION_INSTANT,
+        target_weights=dict(WEIGHTS_EQUAL_PAIR),
+    )
+    with pytest.raises(InvalidChronologyError):
+        require_decision_result_compatible(
+            decision_context(), DecisionResult(decision=early)
+        )
+
+    late = PortfolioDecision(
+        decision_time=AFTER_DECISION,
+        execution_time=AFTER_DECISION + timedelta(minutes=30),
+        target_weights=dict(WEIGHTS_EQUAL_PAIR),
+    )
+    with pytest.raises(InvalidChronologyError):
+        require_decision_result_compatible(
+            decision_context(), DecisionResult(decision=late)
+        )
+
+
+def test_require_decision_result_compatible_admits_boundaries() -> None:
+    from portlearn.interfaces import (
+        DecisionResult,
+        PortfolioDecision,
+        require_decision_result_compatible,
+    )
+
+    for execution_instant in (DECISION_INSTANT, EXECUTION_INSTANT):
+        decision = PortfolioDecision(
+            decision_time=DECISION_INSTANT,
+            execution_time=execution_instant,
+            target_weights=dict(WEIGHTS_EQUAL_PAIR),
+        )
+        assert (
+            require_decision_result_compatible(
+                decision_context(), DecisionResult(decision=decision)
+            )
+            is None
+        )
+
+
+def test_stateful_strategy_transitions_only_via_next_state() -> None:
+    from portlearn.interfaces import (
+        DecisionResult,
+        PortfolioDecision,
+        require_decision_result_compatible,
+    )
+
+    class _SteppingStrategy:
+        def decide(self, context):
+            state = context.strategy_state
+            step = 0 if state is None else state["step"]
+            return DecisionResult(
+                decision=PortfolioDecision(
+                    decision_time=context.decision_time,
+                    execution_time=context.decision_time
+                    + timedelta(minutes=30),
+                    target_weights=dict(WEIGHTS_EQUAL_PAIR),
+                ),
+                next_strategy_state={"step": step + 1},
+            )
+
+    carried = {"step": 3}
+    context = decision_context(strategy_state=carried)
+    result = _SteppingStrategy().decide(context)
+    assert carried == {"step": 3}
+    assert context.strategy_state == {"step": 3}
+    assert result.next_strategy_state == {"step": 4}
+    assert require_decision_result_compatible(context, result) is None
