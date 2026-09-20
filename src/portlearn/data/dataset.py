@@ -24,16 +24,14 @@ assignment bypass.
 
 Decoders are injected: this module never imports the
 provider adapter modules, so the dependency direction is one-way and
-the import graph stays acyclic.  A facade hands the frozen qualified
-decoder of its provider in as an ordinary callable when constructing a
+the import graph stays acyclic.  A facade hands the provider's qualified decoder of its provider in as an ordinary callable when constructing a
 dataset; ``qualify`` routes through it, which is what hash-pins the
 re-decode to the exact retained bytes.
 
-Equality is value equality over the full frozen field set with exactly
+Equality is value equality over the full field set with exactly
 one normalization: the wall-clock ``retrieval_instant`` inside the
 typed provenances is excluded (two live retrievals of the same bytes
-are the same dataset).  The hash derives solely from
-the frozen identity tuple — provenances and records join equality but
+are the same dataset).  The hash derives solely from the identity tuple — provenances and records join equality but
 never the hash, so no unhashable provenance field (the qualified FRED
 record's dict ``request_params``) can break hashing.
 
@@ -89,10 +87,8 @@ class _SealedInstantAttribute(AttributeError, MissingAvailabilityError):
     Dual-classified on purpose: as an ``AttributeError``
     the attribute genuinely does not exist (``hasattr`` is ``False``,
     and no decision-time surface can mistake the record for a qualified
-    one), and as a ``MissingAvailabilityError`` the frozen admission
-    law reads the very same absence as missing availability — attribute
-    absence is missing availability, the law the frozen surfaces
-    already enforce.
+    one), and as a ``MissingAvailabilityError`` the admission rule reads the very same absence as missing availability — attribute
+    absence is missing availability, the rule the decision-time surfaces already enforce.
     """
 
     def __init__(self, record: Any, name: str) -> None:
@@ -110,13 +106,10 @@ class _SealedInstantAttribute(AttributeError, MissingAvailabilityError):
 class _SealedPeriodKeyObservation(PeriodKeyObservation):
     """A period-key record sealed against decision-time misreads.
 
-    Same value, same frozen field triple, same equality as the
+    Same value, same field triple, same equality as the
     underlying :class:`PeriodKeyObservation` — but a read of the two
     decision-time attribute names raises the dual-classified sealed
-    refusal instead of a bare ``AttributeError``, so the frozen
-    admission surfaces report missing availability exactly as
-    pinned.  Constructed only by the dataset container, from records the
-    frozen unqualified decoder produced.
+    refusal instead of a bare ``AttributeError``, so decision-time admission surfaces observe the same missing-availability refusal.  Constructed only by the dataset container, from records the unqualified decoder produced.
     """
 
     __slots__ = ()
@@ -353,8 +346,8 @@ class ResearchDataset:
             )
         if availability_state == UNQUALIFIED:
             # Seal each period-key record: the value triple is unchanged,
-            # but a decision-time attribute read reports the frozen
-            # missing-availability law instead of a bare AttributeError
+            # but a decision-time attribute read reports
+            # missing availability (``MissingAvailabilityError``) instead of a bare ``AttributeError``
             # (attribute absence is missing availability).
             records = tuple(
                 _SealedPeriodKeyObservation(
@@ -517,7 +510,7 @@ class ResearchDataset:
         )
 
     def __hash__(self) -> int:
-        """Hash from the frozen identity tuple only.
+        """Hash from the identity tuple only.
 
         Provenances and records join equality but never the hash, so no
         unhashable provenance field can break hashing; value-equal
@@ -551,7 +544,7 @@ class ResearchDataset:
     def qualify(
         self, availability: Any = None, *, tzinfo: Any = None
     ) -> QualifiedDataset:
-        """Qualify through the injected frozen decoder, or refuse.
+        """Qualify through the injected decoder, or refuse.
 
         Overridden by :class:`UnqualifiedDataset`; the base (and the
         QUALIFIED state) refuse: qualification is one-way.
@@ -573,7 +566,7 @@ class ResearchDataset:
         )
 
     def to_pandas(self) -> pd.DataFrame:
-        """Convert to a DataFrame with the frozen per-state columns.
+        """Convert to a DataFrame with the per-state columns.
 
         UNQUALIFIED: ``["series_id", "period_key", "value"]``.
         QUALIFIED: ``["series_id", "observation_time", "value",
@@ -613,8 +606,7 @@ class UnqualifiedDataset(ResearchDataset):
     Constructed by the provider facades through exactly the public
     canonical constructor (no privileged internal path exists),
     holding the provider's period-key records, the retained
-    bytes, and the typed retrieval facts.  The provider's frozen
-    qualified decoder travels in as an injected callable so
+    bytes, and the typed retrieval facts.  The provider's qualified decoder travels in as an injected callable so
     :meth:`qualify` re-decodes the retained bytes under the caller's
     policy — hash-pinned, never re-fetched, never restated.
     """
@@ -658,7 +650,7 @@ class UnqualifiedDataset(ResearchDataset):
         neither, one-sided or empty refusal is fail-closed, and no
         default :class:`~portlearn.data.ingestion.AvailabilityPolicy` and no
         default zone is ever supplied.  The re-decode runs
-        through the injected frozen provider decoder over the retained
+        through the injected provider decoder over the retained
         bytes with the retained retrieval facts, so it is hash-pinned
         to exactly the bytes the retrieval recorded.
         """
@@ -709,10 +701,8 @@ class QualifiedDataset(ResearchDataset):
     """The decision-time eligible sealed state.
 
     Reached only through :meth:`UnqualifiedDataset.qualify` (and the
-    facades' one-step qualified load, which is that same path): the
-    records are the frozen decoder's timed observations stamped under
-    exactly the caller's policy, the qualified provenance is the frozen
-    decoder's own record, and the retrieval facts of the load are
+    facades' one-step qualified load, which is that same path): the records are the qualified decoder's timed observations stamped under
+    exactly the caller's policy, the qualified provenance is that decoder's own record, and the retrieval facts of the load are
     retained unchanged.  The state is terminal: no further
     qualification exists.
     """
@@ -751,8 +741,7 @@ class QualifiedDataset(ResearchDataset):
     def to_information_set(self, as_of: Any = None) -> InformationSet:
         """Admit the qualified records at ``as_of``, fail-closed.
 
-        The bridge is the frozen :class:`~portlearn.interfaces.\
-InformationSet` admission law itself: every record's timing
+        The bridge is the :class:`~portlearn.interfaces.InformationSet` admission rule itself: every record's timing
         (``available_time``) and lineage (the decoder's declared table
         provenance) is carried unchanged, and admission at ``as_of`` is
         decided by that law, never by this container.

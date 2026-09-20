@@ -1,6 +1,6 @@
 """Time-index and admission contracts for portfolio decisions.
 
-This module freezes the timing semantics:
+This module defines the timing semantics:
 
 - every financial time is a timezone-aware instant, compared as instants
   (wall clock and zone name never affect ordering or equality);
@@ -28,7 +28,7 @@ This module defines four fail-closed errors:
 ``NaiveTimestampError``, ``InvalidChronologyError``,
 ``FutureInformationError``, and ``MissingAvailabilityError``.  It is
 stdlib-only and imports nothing from ``portlearn.observations``, so no
-import cycle exists on the frozen contract surface.  Every semantic
+import cycle exists on this contract surface.  Every semantic
 ordering, equality, and identity-key comparison operates on the
 normalized UTC instant (``to_instant`` / ``instant_key``), so DST-fold
 ambiguity can never make two distinct instants compare equal.

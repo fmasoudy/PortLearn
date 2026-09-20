@@ -86,7 +86,7 @@ class PlotSpec:
 
 
 def _report_kind(value: Any) -> str | None:
-    """Classify an already-built report value by its frozen marker."""
+    """Classify an already-built report value by its ``report_kind`` marker."""
     if not dataclasses.is_dataclass(value) or isinstance(value, type):
         return None
     detected = getattr(value, "report_kind", None)

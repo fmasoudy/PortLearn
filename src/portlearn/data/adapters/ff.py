@@ -5,7 +5,7 @@ The decoder reduces the provider's ZIP-wrapped CSV/TXT publication format
 returns) to the ingestion declared-table form: every record is constructed
 and validated by the single ingestion chokepoint
 (:func:`portlearn.data.ingestion.from_records`) — this module never constructs a
-record, never restates the identity/chronology/availability laws, and
+record, never restates the identity/chronology/availability validation, and
 never stamps a default availability.  Monthly period keys map to period
 end instants through the shared period-calendar substrate
 (:func:`portlearn.calendar.month_end_instant`); daily date keys map to the
@@ -224,12 +224,11 @@ FF_DATASETS: dict[str, FFDatasetEntry] = {
 class FFProvenance(ingestion.SourceProvenance):
     """Retrieval provenance for a fetched or decoded dataset.
 
-    A sibling value object extending the frozen ingestion provenance with
+    A sibling value object extending the ingestion module's ``SourceProvenance`` with
     the provider-layer retrieval facts: source URL,
     ``Last-Modified`` when the provider supplied it, the copyright/
     attribution line, the closed ``dataset_kind``, the catalog
-    ``dataset_id``, and the not-investable warning.  The frozen
-    ``SourceProvenance`` shape is never mutated — extension is by
+    ``dataset_id``, and the not-investable warning.  The ``SourceProvenance`` shape is never mutated — extension is by
     subclass, never by editing the ingestion module.
     """
 
@@ -703,7 +702,7 @@ def decode_unqualified(
 
     When ``retrieval`` provenance from :func:`fetch_raw` is supplied,
     its content hash must match ``data`` exactly (hash-pinned decode,
-    the frozen-decoder pin mirrored by this sibling) and its retrieval
+    mirroring the qualified decoder's pin) and its retrieval
     facts (URL, retrieval instant, ``Last-Modified``) are adopted into
     the decode provenance.
     """

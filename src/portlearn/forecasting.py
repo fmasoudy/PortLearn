@@ -1,12 +1,11 @@
 """The forecasting and estimation lifecycle contract.
 
-This module freezes the lifecycle laws around the frozen
+This module defines the lifecycle laws around the
 ``Forecaster`` protocol — fitting, refitting, forecast timing,
 tuning, seeds, determinism, and provenance — as declared value
 objects and one-gate helpers beside that protocol, never inside it.
 It ships contracts only: no estimator, no wrapper, no model zoo, no
-registry, and no engine. A research repository implements a
-forecaster satisfying the frozen protocol and consumes these
+registry, and no engine. A research repository implements a forecaster satisfying the ``Forecaster`` protocol and consumes these
 lifecycle objects.
 
 Five laws govern the whole module:
@@ -22,14 +21,12 @@ Five laws govern the whole module:
   so a hostile or wrapped estimator that keeps future-available
   records fails closed instead of warning.
 - **No second time vocabulary.** Every chronology or admission
-  failure at this surface raises one of the frozen timing or
-  observations errors, re-used by qualified import from
+  failure at this surface raises one of the timing or observations errors, re-used by qualified import from
   ``portlearn.timing`` and never re-defined here; the only errors
   this module defines are the structural ``ValueError`` subclasses
   (``PlanStructureError``, ``ScheduleStructureError``,
   ``ProvenanceStructureError``) for malformed lifecycle objects.
-- **One prediction path.** The frozen
-  ``forecast(information_set) -> Forecast`` signature is the entire
+- **One prediction path.** The ``forecast(information_set) -> Forecast`` signature is the entire
   prediction contract; this module defines no other callable that
   produces a ``Forecast`` and no path that bypasses
   ``InformationSet`` admission.
@@ -54,8 +51,7 @@ list/tuple distinction never affect it, while any value difference
 does.
 
 The module imports stdlib only at module level plus ``portlearn``
-timing by qualified module import — aware-instant validation and the
-frozen errors remain implemented solely in ``portlearn.timing``;
+timing by qualified module import — aware-instant validation and those errors remain implemented solely in ``portlearn.timing``;
 nothing here re-implements or re-exports them. Importing this module
 performs no I/O and mutates nothing.
 """
@@ -93,7 +89,7 @@ __all__ = [
 
 
 # --------------------------------------------------------------------------- #
-# Structural error arm — module-owned, disjoint from the frozen errors
+# Structural error arm — module-owned, disjoint from the timing and observations errors
 # --------------------------------------------------------------------------- #
 
 
@@ -103,9 +99,7 @@ class PlanStructureError(ValueError):
     The module-owned structural arm: a blank or non-string model
     identity, an unsupported configuration shape, a mis-typed seed, a
     raw instant in place of a fit window, a wrong determinism
-    declaration, or a malformed record collection. Distinct on
-    purpose from the frozen chronology and admission errors, which
-    remain the only errors for time-law violations.
+    declaration, or a malformed record collection. Distinct on purpose from the timing module's chronology and admission errors, which remain the only errors for timing and admission violations.
     """
 
 
@@ -114,7 +108,7 @@ class ScheduleStructureError(ValueError):
 
     Raised for a schedule that is not a non-empty sequence of aware
     instants (a non-iterable, a string, or an empty grid). Naive or
-    non-monotone entries raise the frozen timing errors instead —
+    non-monotone entries raise the timing module's errors instead —
     this class never shadows them.
     """
 
@@ -163,8 +157,7 @@ class FitWindow:
     the fitting method will consume — with no end field: the window's
     end is the fit information set's own ``as_of`` (the one-clock
     law), so a second end clock cannot exist either. Naive
-    timestamps and calendar dates reject fail-closed with the frozen
-    ``NaiveTimestampError``; the stored instant is the exact object
+    timestamps and calendar dates reject fail-closed with ``NaiveTimestampError``; the stored instant is the exact object
     supplied, never coerced or normalized.
     """
 
@@ -395,7 +388,7 @@ class RefitSchedule:
 
     An immutable value object over researcher-supplied plain aware
     instants — no calendar machinery of any kind. Construction
-    validates the grid with the frozen timing laws: a naive entry
+    validates the grid with the timing module's rules: a naive entry
     rejects with ``NaiveTimestampError``; repeated, reversed, or
     zone-aliased-equal entries reject with
     ``InvalidChronologyError`` (strict increase, compared on
@@ -460,11 +453,10 @@ class ForecastProvenance:
     ``NONDETERMINISTIC``), the declared fit window, and, where a
     researcher-side wrapper adapted an external estimator, that
     wrapped implementation's recorded identity. ``produced_by`` is
-    the deterministic provenance token that rides on the frozen
-    ``Forecast`` value object without changing its schema.
+    the deterministic provenance token that rides on the ``Forecast`` value object without changing its schema.
 
-    Immutable. The sanctioned constructor is ``fitting_provenance``,
-    which takes the cutoff from the fit set itself.
+    Immutable. Use ``fitting_provenance`` to construct the object with
+    the cutoff taken from the fit set itself.
     """
 
     model: str
@@ -501,8 +493,7 @@ class ForecastProvenance:
 class FittedModel(Protocol):
     """A fitted model: a forecaster produced by one fit.
 
-    Declaration-only and static-only, exactly like the frozen
-    ``Forecaster`` protocol it satisfies: the single ``forecast``
+    Declaration-only and static-only, exactly like the ``Forecaster`` protocol it satisfies: the single ``forecast``
     method consumes one admitted ``InformationSet``, treats its
     ``as_of`` as the forecast origin, and returns a ``Forecast``
     whose ``decision_time`` equals that ``as_of`` — the implementer's
@@ -524,8 +515,7 @@ class ForecasterFactory(Protocol):
     at its ``as_of`` — and returns a ``FittedModel``. The training
     cutoff is that set's ``as_of`` (one clock); there is no cutoff
     parameter, and a fit that cannot honor the fit-set cutoff
-    rejects at the fitting boundary with the frozen
-    ``FutureInformationError`` rather than warning. No registry, no
+    rejects at the fitting boundary with ``FutureInformationError`` rather than warning. No registry, no
     ``get_params``, no hyperparameter search exists on this
     protocol: selection timing is governed by
     ``require_selection_labels_available`` on the caller's side.
@@ -560,10 +550,9 @@ def require_fit_inputs_admitted(records: Iterable[Any], fit_set: Any) -> None:
 
     The fitting boundary gate: each record's ``available_time`` must
     be at or before the fit set's own ``as_of``. Any record whose
-    availability follows that instant rejects with the frozen
-    ``FutureInformationError`` — fitting that cannot honor the
+    availability follows that instant rejects with ``FutureInformationError`` — fitting that cannot honor the
     fit-set cutoff fails closed, never warns — and a malformed
-    record or a naive ``as_of`` raises its frozen typed error. A
+    record or a naive ``as_of`` raises the corresponding typed error. A
     structurally malformed records collection rejects with
     ``PlanStructureError``. Returns ``None`` when every record is
     admitted.
@@ -608,8 +597,7 @@ def require_cutoff_from_fit_set(asserted: Any, fit_set: Any) -> None:
     The one-clock consistency gate: an instant asserted as the
     training cutoff anywhere in the lifecycle must be exactly the
     fit set's own ``as_of`` — later or earlier both reject with
-    ``ProvenanceStructureError``, a naive assertion rejects with the
-    frozen ``NaiveTimestampError``, and a fit set with no ``as_of``
+    ``ProvenanceStructureError``, a naive assertion rejects with ``NaiveTimestampError``, and a fit set with no ``as_of``
     rejects with ``PlanStructureError``. Comparison is on normalized
     instants, so equal instants expressed in different zones agree.
     Returns ``None`` when the assertion agrees.
@@ -635,9 +623,7 @@ def require_selection_labels_available(
     The tuning-timing law: every label a selection scores on must be
     realizable at the selection origin — its ``available_time`` at
     or before that instant. A label available after the origin is
-    the walk-forward leak made structural: it rejects with the
-    frozen ``FutureInformationError`` at the selection boundary. A
-    naive origin rejects with the frozen ``NaiveTimestampError``; a
+    the walk-forward leak made structural: it rejects with ``FutureInformationError`` at the selection boundary. A naive origin rejects with ``NaiveTimestampError``; a
     structurally malformed labels collection rejects with
     ``PlanStructureError``. Returns ``None`` when every label is
     realizable.
@@ -687,8 +673,7 @@ def fitting_provenance(
     cutoff parameter through which divergence could be smuggled —
     and the plan's declared identity, configuration hash, seed,
     determinism class, and fit window ride through unchanged. The
-    declared fit window's start must not follow the cutoff (the
-    frozen ``InvalidChronologyError`` otherwise). Where a
+    declared fit window's start must not follow the cutoff (``InvalidChronologyError`` otherwise). Where a
     researcher-side wrapper adapted an external estimator,
     ``wrapped_identity`` records that implementation's identity and
     version (non-blank string); it is provenance only and grants no

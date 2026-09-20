@@ -37,15 +37,19 @@ from portlearn.interfaces import (
     AccountingEngine,
     AccountingResult,
     CostModel,
+    DecisionContext,
+    DecisionResult,
     Evaluator,
     Forecast,
     InformationSet,
     PortfolioDecision,
     RebalancePolicy,
+    require_decision_result_compatible,
     require_feature_lineage,
     require_forecast_decision_compatible,
 )
 from portlearn.observations import TimedObservation
+from portlearn.weights import PortfolioWeights, WeightState
 
 # The seed is fixed and recorded in this file only — the minimal public
 # RunManifest schema deliberately carries no seed field.
@@ -157,20 +161,25 @@ class _SeededForecaster:
 
 
 class _SeededStrategy:
-    """``Strategy``: one seeded target book, executing one hour after the
-    forecast origin it consumes."""
+    """``Strategy``: one seeded target book over the context's declared
+    universe, executing one hour after the context's authoritative
+    decision instant (the decision seam)."""
 
     def __init__(self, seed: int) -> None:
         self._seed = seed
 
-    def decide(self, forecast: Forecast) -> PortfolioDecision:
-        return PortfolioDecision(
-            decision_time=forecast.decision_time,
-            execution_time=forecast.decision_time + timedelta(hours=1),
-            target_weights={
-                identifier: _seeded_unit(self._seed, f"weight:{identifier}")
-                for identifier in forecast.values
-            },
+    def decide(self, context: DecisionContext) -> DecisionResult:
+        return DecisionResult(
+            decision=PortfolioDecision(
+                decision_time=context.decision_time,
+                execution_time=context.decision_time + timedelta(hours=1),
+                target_weights={
+                    identifier: _seeded_unit(
+                        self._seed, f"weight:{identifier}"
+                    )
+                    for identifier in context.universe
+                },
+            )
         )
 
 
@@ -236,7 +245,19 @@ def _wired_walk() -> tuple[
     feature_set = InformationSet(features, information_set.as_of)
     forecaster = _SeededForecaster(WIRING_SEED)
     forecast = forecaster.forecast(feature_set)
-    decision = _SeededStrategy(WIRING_SEED).decide(forecast)
+    context = DecisionContext(
+        decision_time=forecast.decision_time,
+        information=feature_set,
+        universe=tuple(forecast.values),
+        current_weights=PortfolioWeights(
+            dict(PRE_TRADE_WEIGHTS), WeightState.PRE_TRADE
+        ),
+        current_weights_as_of=APRIL_DECISION,
+        forecast=forecast,
+    )
+    result = _SeededStrategy(WIRING_SEED).decide(context)
+    require_decision_result_compatible(context, result)
+    decision = result.decision
     accounting = _RebalanceAccountingEngine().account(
         decision, PRE_TRADE_WEIGHTS, REALIZED_RETURNS
     )

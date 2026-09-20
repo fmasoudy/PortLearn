@@ -5,7 +5,7 @@ The first level of the progressive-disclosure surface: one call —
 through exactly the public canonical constructors (no privileged
 internal path exists).
 
-The fetch path always begins at the frozen retrieval-only sibling
+The fetch path always begins at the retrieval-only sibling
 (:func:`~portlearn.data.adapters.fred.fetch_raw`): the provider's exact
 bytes plus typed retrieval facts with the API key validated before any
 socket opens, sent to the provider inside the request URL only, and
@@ -62,8 +62,7 @@ def _fetch_metadata(series_id: str, api_key: str) -> bytes:
 
     The key rides the request URL to the provider only — the same
     fetch-time-only law the adapter enforces — and the returned bytes
-    are never parsed here: they are retained verbatim as auxiliary
-    facts for the frozen decoders, which own every parse rule.
+    are never parsed here: they are retained verbatim as auxiliary facts for the provider decoders, which own every parse rule.
     """
     from urllib.parse import urlencode
 

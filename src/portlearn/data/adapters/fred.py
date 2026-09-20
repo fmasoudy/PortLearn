@@ -4,7 +4,7 @@ The decoder reduces the Federal Reserve Economic Data (FRED) API's JSON
 observations response to the ingestion declared-table form: every record
 is constructed and validated by the single ingestion chokepoint
 (:func:`portlearn.data.ingestion.from_records`) — this module never constructs
-a record, never restates the identity/chronology/availability laws, and
+a record, never restates the identity/chronology/availability validation, and
 never stamps a default availability.  Monthly and quarterly period-start
 observation dates map to period-END instants through the shared
 period-calendar substrate (:func:`portlearn.calendar.month_end_instant`,
@@ -91,7 +91,7 @@ __all__ = [
 
 ADAPTER_IDENTITY = "portlearn.data.adapters.fred"
 
-#: Adapter revision (manifest-recorded); bumped on any surface change.
+#: Adapter revision; bumped on any surface change.
 ADAPTER_VERSION = 1
 
 #: The closed data-mode set: every retrieval is labeled
@@ -103,8 +103,7 @@ DATASET_MODES = (CURRENT_SNAPSHOT, POINT_IN_TIME)
 _BASE_URL = "https://api.stlouisfed.org/fred/series/observations"
 
 #: The period frequencies this adapter maps through the shared substrate; any
-#: other provider frequency (Weekly, Annual, ...) is outside the frozen
-#: period-mapping scope and rejects fail-closed.
+#: other provider frequency (Weekly, Annual, ...) is outside the supported period-mapping set and rejects fail-closed.
 SUPPORTED_FREQUENCIES = ("Monthly", "Quarterly", "Daily")
 
 _LICENCE_NOTE = (
@@ -135,8 +134,7 @@ _SERIES_PREFIX = "FRED/"
 #: on the single timeline.
 _OFFLINE_RETRIEVAL_INSTANT = datetime(1970, 1, 1, tzinfo=UTC)
 
-#: The single sanctioned availability-policy plumbing in this module:
-#: internal plumbing that hands the bounded availability column to the
+#: The one availability-policy object this module constructs: it hands the bounded availability column to the
 #: ingestion chokepoint.  It is NOT a default availability — the caller's
 #: declared policy remains a mandatory argument on every decode.
 _BOUNDED_EXPLICIT_COLUMN = ingestion.AvailabilityPolicy.explicit_column(
@@ -181,12 +179,11 @@ def _lag_note(policy: ingestion.AvailabilityPolicy) -> str:
 class FREDProvenance(ingestion.SourceProvenance):
     """Retrieval provenance for a fetched or decoded FRED dataset.
 
-    A sibling value object extending the frozen ingestion provenance with
+    A sibling value object extending the ingestion module's ``SourceProvenance`` with
     the provider-layer retrieval facts: the sanitized
     request URL (never containing the API key), the realtime window, the
     attribution line, the closed ``data_mode``, the sanitized request
-    parameters, and the declared-lag note.  The frozen
-    ``SourceProvenance`` shape is never mutated — extension is by
+    parameters, and the declared-lag note.  The ``SourceProvenance`` shape is never mutated — extension is by
     subclass, never by editing the ingestion module.
     """
 
@@ -235,7 +232,7 @@ class FREDRetrievalProvenance(RetrievalProvenance):
     load can never satisfy the qualified provenance contract.  Frozen
     and hashable end-to-end: ``request_params`` is a canonical
     immutable tuple of key-sorted string pairs (never a dict, never
-    key-bearing), which is exactly what the frozen qualified decoder's
+    key-bearing), which is exactly what the qualified decoder's
     ``dict(retrieval.request_params)`` adoption consumes unchanged.
     """
 
@@ -594,7 +591,7 @@ def fetch(
     Stdlib-only (``urllib.request``); the provider's bytes are returned
     exactly as received — no parsing of observations happens here.  The
     realtime window (``realtime_start``/``realtime_end``) is always sent
-    (D5: never a silent window), defaulting to today.  The API key is
+    (never a silent window), defaulting to today.  The API key is
     validated before any socket is opened, sent to the provider, and
     never recorded: the returned provenance carries a sanitized URL and
     sanitized request parameters only.  True-vintage parameters reject
@@ -887,7 +884,7 @@ def decode_unqualified(
 
     When ``retrieval`` provenance from :func:`fetch_raw` is supplied,
     its content hash must match ``data`` exactly (hash-pinned decode,
-    the frozen-decoder pin mirrored by this sibling) and its retrieval
+    mirroring the qualified decoder's pin) and its retrieval
     facts (URL, retrieval instant, request parameters, realtime
     window) are adopted into the decode provenance.
     """

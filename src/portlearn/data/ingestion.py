@@ -1,6 +1,6 @@
 """Generic user-data ingestion: the declared-schema normalization chokepoint.
 
-This module freezes the generic-user-data-interface laws:
+This module defines the generic-user-data-interface rules:
 
 - **Declared schema is mandatory.** :class:`DeclaredTableSchema`
   names every column the source table must carry; blank or non-string
@@ -16,9 +16,8 @@ This module freezes the generic-user-data-interface laws:
   imports a dataframe library.  Values are admitted from the closed
   domain ``str | int | float | bool | None`` — anything else rejects
   ``TypeError`` (no object passthrough, no dtype inference).
-- **Time fields are frozen-law-only.** Every time cell on every
-  input path decodes exclusively through the frozen
-  :func:`portlearn.timing.to_instant` law: naive datetimes,
+- **Time fields decode one way.** Every time cell on every
+  input path decodes exclusively through :func:`portlearn.timing.to_instant`: naive datetimes,
   calendar dates, date-only strings, and offset-less strings all
   reject ``NaiveTimestampError`` — no default zone, no date-to-midnight
   coercion, the classic daily-data leakage vector.
@@ -33,8 +32,7 @@ This module freezes the generic-user-data-interface laws:
 - **One row→record chokepoint.** All four input paths
   (DataFrame, CSV, Parquet, explicit record sequence) construct
   :class:`~portlearn.observations.TimedObservation` records through
-  one builder that enforces the frozen identity, chronology, and
-  availability laws and rejects duplicate full-identity rows with
+  one builder that enforces the identity, chronology, and availability rules and rejects duplicate full-identity rows with
   ``AmbiguousObservationError`` at ingestion — early and loud.
 - **Frequency is carried metadata, never semantics.**  Nothing
   converts, infers, or resamples; a declared frequency inconsistent
@@ -43,7 +41,7 @@ This module freezes the generic-user-data-interface laws:
   :class:`SourceProvenance` value object — a sibling artifact that
   never widens ``RunManifest``.
 
-Contract errors are owned by their frozen modules: this module
+Contract errors are owned by their defining modules: this module
 imports them from :mod:`portlearn.timing` and
 :mod:`portlearn.observations` and defines none of its own beyond the
 extra-guard error.  The module is stdlib-only: the core
@@ -274,12 +272,11 @@ _LICENCE_NOTE = (
 
 @dataclass(frozen=True)
 class SourceProvenance:
-    """Where a loaded table came from and under which declared laws.
+    """Where a loaded table came from and under which declared schema and policy.
 
     A sibling value object: provenance travels beside the
     records so any loaded table is reconstructable from source id,
-    content hash, and retrieval instant, while ``RunManifest``'s frozen
-    schema is never widened.
+    content hash, and retrieval instant, while ``RunManifest``'s schema is never widened.
     """
 
     source_id: str
@@ -296,7 +293,7 @@ class SourceProvenance:
 
 
 # --------------------------------------------------------------------------- #
-# Time cells decode exclusively through the frozen law
+# Time cells decode exclusively through portlearn.timing.to_instant
 # --------------------------------------------------------------------------- #
 
 
@@ -304,8 +301,8 @@ def _cell_instant(cell: Any, field_name: str) -> datetime:
     """Decode one time cell to a UTC-normalized instant, fail-closed.
 
     ISO-8601 strings decode via :meth:`datetime.datetime.fromisoformat`
-    and then — like every datetime or date input — pass through the
-    frozen :func:`portlearn.timing.to_instant` law, which rejects naive
+    and then — like every datetime or date input — pass through
+    :func:`portlearn.timing.to_instant`, which rejects naive
     datetimes, calendar dates, and date-only strings with
     ``NaiveTimestampError``.  No default zone and no date-to-midnight
     coercion exists on any input path.
@@ -338,8 +335,7 @@ def _build_record(
     """Construct one :class:`TimedObservation` from one decoded row.
 
     This is the only construction site: every input path (DataFrame,
-    CSV, Parquet, explicit record sequence) funnels through it, so the
-    frozen identity, chronology, and availability laws hold once for
+    CSV, Parquet, explicit record sequence) funnels through it, so the identity, chronology, and availability rules hold once for
     the whole package.  Duplicate full-identity rows reject here,
     early and loud, with ``AmbiguousObservationError``.
     """
@@ -388,7 +384,7 @@ def _availability_instant(
     """Apply the declared :class:`AvailabilityPolicy` to one row.
 
     Returns ``None`` when an EXPLICIT_COLUMN declaration is absent or
-    blank, so the frozen observation constructor raises
+    blank, so the observation constructor raises
     ``MissingAvailabilityError`` — a source unable to declare when the
     information first could have been known must fail, never default.
     """
@@ -547,9 +543,8 @@ class _MissingAvailabilityColumnError(MissingAvailabilityError, ValueError):
 
     Private to this module: the condition is simultaneously a missing
     declared column (a ``ValueError``) and an undeclared
-    availability (the frozen ``MissingAvailabilityError``), so the
-    raised error is an instance of both — the frozen error reused as
-    a base class, never redefined.
+    availability (``MissingAvailabilityError``), so the
+    raised error is an instance of both — the error reused as a base class, never redefined.
     """
 
 
@@ -679,10 +674,9 @@ def from_records(
     """Load records from an explicit sequence of per-row mappings.
 
     Each item must be a mapping keyed by the declared column names
-    (string time cells decode through the same frozen instant law as
+    (string time cells decode through the same instant-decoding rule as
     every other path); every row funnels through the single
-    chokepoint with the full identity, chronology, availability, and
-    duplicate-identity laws enforced.
+    chokepoint with the full identity, chronology, availability, and duplicate-identity rules enforced.
     """
     _require_schema(schema)
     rows = _normalized_rows(records)

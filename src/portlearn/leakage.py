@@ -45,7 +45,7 @@ from portlearn.timing import (
     NaiveTimestampError,
 )
 
-__all__ = [  # noqa: RUF022 — frozen order (types, function, constant)
+__all__ = [  # noqa: RUF022 — deliberate order (types, function, constant)
     "LeakageCase",
     "LeakageFinding",
     "LeakageReport",
@@ -68,15 +68,15 @@ FROZEN_CONTRACT_ERRORS: tuple[type[Exception], ...] = (
 
 _FROZEN_ERROR_SET: frozenset[type[Exception]] = frozenset(FROZEN_CONTRACT_ERRORS)
 
-#: Detail pinned for a case whose attempt raised an error of the wrong
-#: class — the leak was blocked, but by the wrong law.
+#: Detail for a case whose attempt raised an error of the wrong
+#: class — the leak was blocked, but by the wrong error class.
 _WRONG_ERROR_CLASS_DETAIL = "wrong error class"
 
-#: Detail pinned for a case whose attempt raised nothing at all — the
+#: Detail for a case whose attempt raised nothing at all — the
 #: attempted leak was not blocked by any contract.
 _UNBLOCKED_LEAK_DETAIL = "leak was NOT blocked"
 
-#: Detail pinned for a case blocked by exactly its expected error.
+#: Detail for a case blocked by exactly its expected error.
 _BLOCKED_DETAIL = "blocked"
 
 
@@ -154,8 +154,7 @@ class LeakageFinding:
     ``blocked`` is true only when the attempt raised exactly the case's
     expected error class; ``error_type`` is the class that was actually
     raised (``None`` when nothing was raised); ``detail`` is one of the
-    three pinned outcome phrases, so reports carry laws, never message
-    tails.
+    three fixed outcome phrases, so reports carry fixed verdicts, never message tails.
     """
 
     __slots__ = ("blocked", "case", "detail", "error_type")

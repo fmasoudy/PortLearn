@@ -1,7 +1,7 @@
 <p align="center">
   <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="docs/assets/brand/png/monochrome/portlearn-logo-horizontal-white.png">
-    <img src="docs/assets/brand/png/primary/portlearn-logo-horizontal.png" alt="PortLearn logo: a rounded navy-and-teal PL monogram with a segmented circular motif, beside the PortLearn wordmark" width="460">
+    <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/fmasoudy/PortLearn/main/docs/assets/brand/png/monochrome/portlearn-logo-horizontal-white.png">
+    <img src="https://raw.githubusercontent.com/fmasoudy/PortLearn/main/docs/assets/brand/png/primary/portlearn-logo-horizontal.png" alt="PortLearn logo: a rounded navy-and-teal PL monogram with a segmented circular motif, beside the PortLearn wordmark" width="460">
   </picture>
 </p>
 
@@ -47,6 +47,11 @@ PortLearn is under active research development. This roadmap is intentionally hi
 - Chronologically valid feature transforms: lags, rolling statistics, scalers, and carry-forward.
 - Contracts for the forecasting and estimation lifecycle (fitting, refitting, forecast timing, tuning, seeds, determinism, provenance); estimators are not provided yet.
 - Descriptive research-dataset diagnostics (summary, correlation, coverage, missingness) with renderer-neutral plotting; rendering is available through the optional `plot` extra.
+- Portfolio weights: target-weight validation, weight books, and the closed portfolio-role vocabulary, under the `portlearn.weights` module.
+- Rebalancing: schedule policies and the drift law that carries held weights across holding segments (`portlearn.rebalance`).
+- Transaction ledger: segment-composed accounting over the wealth path, built on immutable per-period ledger records with retained execution details, and the reference accounting engine (`portlearn.ledger`).
+- Trading and cost accounting: cost-aware transaction and turnover accounting with proportional cost models (`portlearn.trades`, `portlearn.turnover`, `portlearn.costs`).
+- The strategy decision-contract seam: `Strategy.decide(context) -> DecisionResult` over `DecisionContext` — the decision-time aggregate of forecast, information, holdings, and strategy state — validated by `require_decision_result_compatible`.
 
 **Next**
 
@@ -55,7 +60,6 @@ PortLearn is under active research development. This roadmap is intentionally hi
 
 **Planned**
 
-- Portfolio construction and accounting.
 - Later deep-learning and reinforcement-learning research capabilities.
 
 Entries move forward on this roadmap as the underlying research foundation stabilizes; nothing here is a dated commitment.

@@ -18,18 +18,44 @@ from typing import Any
 
 __version__ = metadata.version("portlearn")
 
-__all__ = ["__version__", "data"]
+__all__ = ["__version__", "data", "weights"]
 
 
 def __getattr__(name: str) -> Any:
-    """Lazily import the ``data`` facade package (PEP 562), or fail."""
+    """Lazily import the public module facades (PEP 562)."""
     if name == "data":
         from importlib import import_module
 
         return import_module("portlearn.data")
+    if name == "weights":
+        from importlib import import_module
+
+        return import_module("portlearn.weights")
+    if name == "rebalance":
+        from importlib import import_module
+
+        return import_module("portlearn.rebalance")
+    if name == "trades":
+        from importlib import import_module
+
+        return import_module("portlearn.trades")
+    if name == "turnover":
+        from importlib import import_module
+
+        return import_module("portlearn.turnover")
+    if name == "costs":
+        from importlib import import_module
+
+        return import_module("portlearn.costs")
+    if name == "ledger":
+        from importlib import import_module
+
+        return import_module("portlearn.ledger")
     raise AttributeError(
         f"module {__name__!r} has no attribute {name!r}; the lazily "
-        "exposed public subpackage is 'data'."
+        "exposed public subpackage is 'data'; the public modules are "
+        "'weights', 'rebalance', 'trades', 'turnover', 'costs', and "
+        "'ledger'."
     )
 
 

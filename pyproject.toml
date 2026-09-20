@@ -4,7 +4,7 @@
 # The distribution name and the PEP 440 version declared here are the single
 # version authority for the package.
 name = "portlearn"
-version = "0.0.1.dev1"
+version = "0.0.1.dev2"
 
 # Minimum supported Python; no untested upper-version exclusion.
 requires-python = ">=3.11"

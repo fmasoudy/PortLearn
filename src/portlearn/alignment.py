@@ -1,23 +1,19 @@
 """Availability-aware alignment of mixed-frequency observations.
 
 This module implements the alignment laws as a thin composition
-surface over the frozen observation, timing, and period-calendar
-laws: an immutable
+surface over the observation, timing, and period-calendar laws: an immutable
 :class:`ObservationStore` indexed by ``(series_id, observation_time)``
-group, a single visibility query that delegates vintage selection to
-the frozen ``vintage_as_of`` operation, an :func:`align` output of the
+group, a single visibility query that delegates vintage selection to the ``vintage_as_of`` operation, an :func:`align` output of the
 caller's own vintage records, exactly one convenience month-end
 decision-calendar builder composed over the shared period-calendar
-substrate, and one grid-chronology validator reusing the frozen
-chronology and timestamp errors.
+substrate, and one grid-chronology validator reusing the chronology and timestamp errors defined in ``portlearn.timing``.
 
 The laws, in summary:
 
 - **Alignment is admission, parameterized by availability.** The only
   question a decision instant asks of any series — daily, monthly, or
   quarterly — is *what was knowable at this instant?* Visibility is
-  decided by each record's own declared ``available_time`` through the
-  frozen vintage operation and the frozen inclusive admission law;
+  decided by each record's own declared ``available_time`` through the ``vintage_as_of`` operation and the inclusive admission rule;
   this module never re-implements admission, never selects among
   vintages of one observation, and contains no date-matching or
   calendar-proximity join of any kind.
@@ -28,8 +24,7 @@ The laws, in summary:
 - **The decision calendar is input, not machinery.** Alignment
   consumes one aware instant; decision grids are researcher inputs.
   One convenience builder ships — month-end instants through the
-  shared substrate — and nothing else; schedule machinery is a named,
-  deferred seam owned elsewhere.
+  shared substrate — and nothing else; schedule machinery is not provided here.
 - **No aggregation, no resampling, no implicit publication lag.**
   Alignment aligns; frequency transformation and bounded carry-forward
   belong to the transforms module and are composed by the researcher,
@@ -38,8 +33,8 @@ The laws, in summary:
   assumes none, and cannot be configured with one.
 - **Chronology of the grid.** Calendar-builder output and any
   researcher-supplied grid must be strictly increasing aware instants;
-  non-monotone grids reject with the frozen chronology error, and
-  naive instants reject with the frozen timestamp error at every entry
+  non-monotone grids reject with ``InvalidChronologyError``, and
+  naive instants reject with ``NaiveTimestampError`` at every entry
   point.
 
 **RESEARCHER WARNING — align on availability, never on dates.**
@@ -104,8 +99,7 @@ class GridDeclarationError(ValueError):
     Raised for malformed calendar declarations (bad year/month/count
     shapes), malformed request elements, and grids that are not
     non-empty sequences of entries. Chronology violations and naive
-    instants are not declaration failures — they reject with the
-    frozen chronology and timestamp errors respectively.
+    instants are not declaration failures — they reject with ``InvalidChronologyError`` and ``NaiveTimestampError`` respectively.
     """
 
 
@@ -121,7 +115,7 @@ class ObservationStore:
     """An immutable point-in-time index over declared observations.
 
     Built from :class:`~portlearn.observations.TimedObservation`
-    records under the frozen record discipline: every record's own
+    records under the record rules: every record's own
     constructor laws apply (aware instants, mandatory availability,
     availability never preceding the observation), and two records
     sharing the full identity triple ``(series_id, observation_time,
@@ -129,7 +123,7 @@ class ObservationStore:
     last-write-wins, no value-equality exception. A revision — the
     same observation with a later ``available_time`` — is a separate
     record and is exactly what the store holds; selecting among
-    vintages of one observation is the frozen vintage operation's job
+    vintages of one observation is the ``vintage_as_of`` operation's job
     at query time, never the store's at build time.
 
     The index maps each ``(series_id, observation_time)`` group to its
@@ -207,7 +201,7 @@ class ObservationStore:
     def _visible_group_record(
         self, key: tuple[str, datetime], decision: datetime
     ) -> TimedObservation | None:
-        """The frozen vintage operation's answer for one group."""
+        """The ``vintage_as_of`` operation's answer for one group."""
         visible = vintage_as_of(self._groups[key], decision)
         if visible is not None:
             return visible
@@ -234,9 +228,7 @@ class ObservationStore:
 
         For each requested series identifier, in request order, the
         latest of its observation groups that has a visible vintage at
-        ``decision_instant`` — selected by issuing the frozen
-        ``vintage_as_of`` operation per group and admitting by the
-        frozen inclusive law (``available_time <= decision_instant``).
+        ``decision_instant`` — selected by issuing ``vintage_as_of`` per group and admitting by the inclusive rule (``available_time <= decision_instant``).
         A series with no visible vintage at the instant answers
         ``None`` in its slot: explicit absence, not an error, not an
         imputation, and never a silently carried stale value. The
@@ -328,7 +320,7 @@ def align(
     """The admissible vintage records for one decision instant.
 
     For each requested ``(series_id, observation_time)`` group, in
-    request order, the frozen vintage operation's visible vintage at
+    request order, the ``vintage_as_of`` operation's visible vintage at
     ``decision_instant`` (the latest ``available_time`` at or before
     the instant — availability exactly at the decision admits). A
     group with no visible vintage contributes no record: explicit
@@ -337,8 +329,7 @@ def align(
     order with absence removed — and holds the store's own record
     objects.
 
-    The output is the caller's to submit to the frozen
-    ``InformationSet(items, as_of=decision_instant)`` constructor for
+    The output is the caller's to submit to the ``InformationSet(items, as_of=decision_instant)`` constructor for
     fail-closed admission; this function never constructs an
     information set and never bypasses its constructor laws.
 
@@ -387,9 +378,7 @@ def require_increasing_instants(grid: Iterable[Any]) -> None:
     builder emits — must be a non-empty sequence of aware instants in
     strictly increasing order: a decision calendar that repeats or
     reverses an instant is malformed. Equal adjacent instants reject
-    (strict increase); a non-monotone grid rejects with the frozen
-    ``InvalidChronologyError``; a naive entry rejects with the frozen
-    ``NaiveTimestampError``; a non-sequence, a string, or an empty
+    (strict increase); a non-monotone grid rejects with ``InvalidChronologyError``; a naive entry rejects with ``NaiveTimestampError``; a non-sequence, a string, or an empty
     grid rejects with ``GridDeclarationError``. Comparisons use
     normalized instants, so equal instants expressed in different
     timezones still reject as equal. Returns ``None`` on success.
@@ -476,14 +465,11 @@ def monthly_decision_calendar(
     calendar day, leap February included) in the declared timezone
     ``tz``, UTC-normalized at storage. The period-end mapping is the
     substrate's, imported here and never restated; no quarterly,
-    weekly, or custom-frequency builder ships, and no schedule
-    machinery exists in this module (that seam is named and owned
-    elsewhere).
+    weekly, or custom-frequency builder ships, and no schedule machinery exists in this module.
 
     ``tz`` must be an aware timezone object — a naive or invalid zone
-    rejects fail-closed with ``NaiveTimestampError`` through the
-    substrate's own law; no default zone is ever assumed. The builder's
-    output is validated by the same grid law researchers' grids obey
+    rejects fail-closed with ``NaiveTimestampError`` through the substrate's own validation; no default zone is ever assumed. The builder's
+    output is validated by the same grid rule researchers' grids obey
     (:func:`require_increasing_instants`) before it is returned, so
     every calendar this module emits is strictly increasing aware
     instants by construction. ``SAME_INSTANT`` availability under this
