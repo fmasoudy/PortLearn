@@ -5,7 +5,7 @@ alignment, information-set, leakage, and manifest surfaces over committed
 synthetic provider-format fixtures, entirely offline.  These nodes pin that
 composition: an end-to-end offline replay with the network unavailable,
 provenance summary content, availability facts at the publication boundary,
-a fully blocked leakage battery, byte-identical determinism across repeated
+a fully blocked leakage battery, identical determinism across repeated
 runs, the example's import discipline, and four-family admission at the
 decision instant.
 """

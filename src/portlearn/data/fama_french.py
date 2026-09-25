@@ -15,7 +15,7 @@ is UNQUALIFIED — no availability anywhere.  The qualified one-step load
 requires the indivisible evidence pair ``(availability, tzinfo)`` —
 both or neither — and is exactly the raw load plus an immediate
 ``qualify(...)`` over the same retained bytes, so one-step and two-step
-are byte-identical by construction.  No default
+are identical by construction.  No default
 availability policy and no default zone is ever supplied.
 
 Import graph: this facade imports the alias catalog, the dataset
@@ -62,7 +62,7 @@ _FF_ARTIFACTS: Final[dict[str, dict[str, str]]] = {
 def resolve_ff_dataset_id(name: Any, frequency: Any = None) -> str:
     """Resolve one research alias to a provider dataset id, or reject.
 
-    Fail-closed in exactly three ways, each before any network is
+    Input is rejected in exactly three ways, each before any network is
     touched:
 
     * an unknown or blank name rejects — the catalog is closed and no
@@ -79,14 +79,14 @@ def resolve_ff_dataset_id(name: Any, frequency: Any = None) -> str:
             "a research alias must be a non-empty, non-blank string; got "
             f"{name!r}. The closed alias catalog is "
             f"{sorted(_FF_ARTIFACTS)} — no permissive or fuzzy alias "
-            "matching exists, fail-closed."
+            "matching exists, and reject."
         )
     artifacts = _FF_ARTIFACTS.get(name)
     if artifacts is None:
         raise ValueError(
             f"the research alias {name!r} is not in the closed "
             f"catalog {sorted(_FF_ARTIFACTS)}; an unknown name rejects "
-            "before any network is touched, fail-closed."
+            "before any network is touched, and reject."
         )
     if frequency is None:
         if len(artifacts) > 1:
@@ -106,7 +106,7 @@ def resolve_ff_dataset_id(name: Any, frequency: Any = None) -> str:
             f"research alias {name!r}: {sorted(artifacts.values())}. The "
             "catalog is a selector only — an existing artifact is picked "
             "or the request rejects; no artifact is ever resampled or "
-            "converted to another frequency, fail-closed."
+            "converted to another frequency, and reject."
         )
     return artifacts[frequency]
 
@@ -152,7 +152,7 @@ def load(
             "qualification takes the indivisible evidence pair: pass "
             "BOTH availability= (an explicit AvailabilityPolicy "
             "declaration) and tzinfo= (an aware zone) together — "
-            "one-sided evidence is refused fail-closed, because a "
+            "one-sided evidence is refused unconditionally, because a "
             "lone policy or a lone zone each smuggle a silent "
             "decision-time assumption. No default availability and "
             "no default zone is ever supplied."
@@ -163,7 +163,7 @@ def load(
                 "retrieval provenance may be supplied only together with "
                 "the exact data bytes it pinned (data=...): retrieval "
                 "facts without bytes name a retrieval that cannot be "
-                "verified, fail-closed."
+                "verified, and reject."
             )
         data, retrieval = ff.fetch_raw(dataset_id)
     else:
@@ -180,7 +180,7 @@ def load(
                 "retrieval provenance hash pin mismatch: the supplied "
                 "bytes are not the bytes the retrieval recorded "
                 f"({retrieval.content_sha256!r} pinned); the load "
-                "rejects fail-closed."
+                "rejects unconditionally."
             )
     records, provenance = ff.decode_unqualified(
         data, dataset_id, retrieval=retrieval

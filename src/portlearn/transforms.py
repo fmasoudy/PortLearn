@@ -27,12 +27,12 @@ protocol surface):
 - **Explicit fitting windows.** Scaling transforms declare their
   fitting window as the exact sequence of admitted records the
   statistics are computed over; the window's extent is recorded in
-  provenance, and ``transform`` applies the frozen statistics — never
+  provenance, and ``transform`` applies the immutable statistics — never
   recomputing them, never absorbing transform-time records into them.
   The fit-window cutoff is declared and recorded, in the shared
   admission vocabulary used across the library (one fit-cutoff
   concept, no transform-local second clock).
-- **Insufficient windows fail closed.** Fewer records than a
+- **Insufficient windows unconditional.** Fewer records than a
   declared window requires — or a scaler fit window with no spread —
   raises ``InsufficientWindowError``, this module's own
   ``ValueError``. Never NaN emission, never partial-window output,
@@ -109,7 +109,7 @@ __all__ = [
 
 
 # --------------------------------------------------------------------------- #
-# Fail-closed error taxonomy — the module-owned structural arm
+# Rejection taxonomy — the module-owned structural arm
 # --------------------------------------------------------------------------- #
 
 
@@ -126,7 +126,7 @@ class WindowDeclarationError(ValueError):
 
 
 class InsufficientWindowError(ValueError):
-    """A declared window lacks the records it requires (fail closed).
+    """A declared window lacks the records it requires (unconditional).
 
     Fewer records than the window requires — or a scaler fit window
     carrying no spread — rejects with this error rather than emitting
@@ -193,7 +193,7 @@ def _require_non_negative_timedelta(value: Any, name: str) -> timedelta:
 
 
 def _materialize(observations: Iterable[TimedObservation]) -> list[TimedObservation]:
-    """Materialize input and enforce the single-series rule (fail closed)."""
+    """Materialize input and enforce the single-series rule (unconditional)."""
     records = list(observations)
     series = {record.series_id for record in records}
     if len(series) > 1:
@@ -222,7 +222,7 @@ def _availability_sorted(records: list[TimedObservation]) -> list[TimedObservati
 def _require_window_support(
     records: list[TimedObservation], window: int, transform_name: str
 ) -> None:
-    """Fail closed when fewer records exist than the window requires."""
+    """Reject when fewer records exist than the window requires."""
     if len(records) < window:
         raise InsufficientWindowError(
             f"insufficient window support: {transform_name} declares a "
@@ -241,7 +241,7 @@ def _scaled_output(
     fit_latest_available: datetime,
     fit_latest_instant: datetime,
 ) -> TimedObservation:
-    """One scaled record: value by frozen statistics, timing floored at fit.
+    """One scaled record: value by fixed statistics, timing floored at fit.
 
     The output keeps the record's own ``observation_time``; its
     ``available_time`` is the later of the record's availability and
@@ -269,14 +269,14 @@ def _fit_window_extent(
 
 
 def _require_spread(values: list[float], transform_name: str) -> None:
-    """Fail closed when the fit window carries no spread (fail-closed numerics)."""
+    """Reject when the fit window carries no spread (unconditional numerics)."""
     if len(values) < 2:
         raise InsufficientWindowError(
             f"insufficient window support: {transform_name} declares a "
             f"fitting window of at least two records, but the declared "
             f"window carries {len(values)} — a statistic over a single "
             "record names no spread, so scaling is undefined and the "
-            "declaration rejects fail-closed rather than emitting "
+            "declaration rejects unconditionally rather than emitting "
             "degenerate output."
         )
     if transform_name == "StandardScaler" and pstdev(values) == 0.0:
@@ -284,7 +284,7 @@ def _require_spread(values: list[float], transform_name: str) -> None:
             "insufficient window support: StandardScaler's declared "
             "fitting window carries no spread (every value equal), so "
             "the standard deviation is zero and scaling would divide "
-            "by it — the declaration rejects fail-closed rather than "
+            "by it — the declaration rejects unconditionally rather than "
             "emitting NaN or infinite values."
         )
     if transform_name == "MinMaxScaler" and min(values) == max(values):
@@ -292,7 +292,7 @@ def _require_spread(values: list[float], transform_name: str) -> None:
             "insufficient window support: MinMaxScaler's declared "
             "fitting window carries no range (every value equal), so "
             "scaling would divide by a zero range — the declaration "
-            "rejects fail-closed rather than emitting NaN or infinite "
+            "rejects unconditionally rather than emitting NaN or infinite "
             "values."
         )
 
@@ -310,7 +310,7 @@ class RollingMean:
     records latest available at the output's reference instant — the
     window end in availability order, which is also the output's
     ``observation_time`` and ``available_time``. Fewer records
-    than the window requires fail closed.
+    than the window requires unconditional.
     """
 
     def __init__(self, window: int) -> None:
@@ -485,7 +485,7 @@ class CarryForward:
             max_staleness, "max_staleness"
         )
         # Reference instants are declared, validated by the shared
-        # normalizer (naive inputs reject fail-closed), and recorded in
+        # normalizer (naive inputs reject unconditionally), and recorded in
         # instant order — the declared surface the transform answers at.
         self._reference_instants = tuple(
             sorted(
@@ -553,16 +553,16 @@ class CarryForward:
 
 
 class StandardScaler:
-    """Standardization by statistics frozen over a declared fit window.
+    """Standardization by statistics immutable over a declared fit window.
 
     The fitting window is the exact sequence of admitted records given
     at construction; the mean and population standard deviation are
     computed over it once, recorded in provenance, and fixed
-    thereafter. ``transform`` applies the frozen statistics record by
+    thereafter. ``transform`` applies the immutable statistics record by
     record and floors every output's ``available_time`` at the fit
     window's latest availability, so no output can carry statistics
     before they are knowable. A fit window with fewer than two
-    records or no spread rejects fail-closed.
+    records or no spread is rejected.
     """
 
     def __init__(self, fit_records: Iterable[TimedObservation]) -> None:
@@ -585,13 +585,13 @@ class StandardScaler:
 
     @property
     def provenance(self) -> MappingProxyType:
-        """The declared fit window and the frozen statistics."""
+        """The declared fit window and the statistics estimated over it."""
         return MappingProxyType(self._provenance)
 
     def transform(
         self, observations: Iterable[TimedObservation]
     ) -> list[TimedObservation]:
-        """Scale input records by the statistics frozen over the fit window."""
+        """Scale input records by the statistics estimated over the fit window."""
         records = _materialize(observations)
         last = self._provenance["fit_window_last_available"]
         return [
@@ -608,11 +608,11 @@ class StandardScaler:
 
 
 class MinMaxScaler:
-    """Min-max normalization by statistics frozen over a declared fit window.
+    """Min-max normalization by statistics immutable over a declared fit window.
 
     The same fit-window definition as ``StandardScaler`` with the
-    minimum and maximum as the frozen statistics; a fit window with no
-    range (every value equal) rejects fail-closed rather than dividing
+    minimum and maximum as the immutable statistics; a fit window with no
+    range (every value equal) is rejected rather than dividing
     by zero.
     """
 
@@ -636,13 +636,13 @@ class MinMaxScaler:
 
     @property
     def provenance(self) -> MappingProxyType:
-        """The declared fit window and the frozen statistics."""
+        """The declared fit window and the statistics estimated over it."""
         return MappingProxyType(self._provenance)
 
     def transform(
         self, observations: Iterable[TimedObservation]
     ) -> list[TimedObservation]:
-        """Scale input records by the statistics frozen over the fit window."""
+        """Scale input records by the statistics estimated over the fit window."""
         records = _materialize(observations)
         last = self._provenance["fit_window_last_available"]
         span = self._maximum - self._minimum

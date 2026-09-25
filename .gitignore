@@ -16,5 +16,5 @@ venv/
 # OS
 .DS_Store
 
-# Local scratch (never commit run artifacts without an explicit milestone decision)
+# Local scratch (never commit run artifacts without an explicit release decision)
 scratch/

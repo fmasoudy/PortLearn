@@ -52,6 +52,7 @@ PortLearn is under active research development. This roadmap is intentionally hi
 - Transaction ledger: segment-composed accounting over the wealth path, built on immutable per-period ledger records with retained execution details, and the reference accounting engine (`portlearn.ledger`).
 - Trading and cost accounting: cost-aware transaction and turnover accounting with proportional cost models (`portlearn.trades`, `portlearn.turnover`, `portlearn.costs`).
 - The strategy decision-contract seam: `Strategy.decide(context) -> DecisionResult` over `DecisionContext` — the decision-time aggregate of forecast, information, holdings, and strategy state — validated by `require_decision_result_compatible`.
+- Strategies: the built-in classical strategies — equal weight, inverse volatility, minimum variance, and mean-variance (`portlearn.strategies`).
 
 **Next**
 

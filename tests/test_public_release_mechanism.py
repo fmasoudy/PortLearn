@@ -1,6 +1,6 @@
 """Controlled public release mechanism tests.
 
-These tests enforce the fail-closed manual-trigger public release
+These tests enforce the unconditional manual-trigger public release
 workflow (``.github/workflows/release.yml``):
 
 * the workflow triggers on ``workflow_dispatch`` only — never on any
@@ -41,7 +41,7 @@ workflow (``.github/workflows/release.yml``):
 * the embedded validation module (extractable between explicit sentinel
   markers) is offline and side-effect free, its command-line entry
   point wires argv and the notes file exactly as the workflow invokes
-  it, so a deliberately mismatched dry input is provable to fail closed
+  it, so a deliberately mismatched dry input is provable to unconditional
   *before any creation* without network access and without creating any
   tag or release.
 
@@ -138,7 +138,7 @@ def _release_workflow_text() -> str:
     if not WORKFLOW_PATH.is_file():
         pytest.fail(
             "the controlled public release workflow is missing: "
-            ".github/workflows/release.yml (the fail-closed "
+            ".github/workflows/release.yml (the unconditional "
             "workflow_dispatch-only public release surface)"
         )
     return WORKFLOW_PATH.read_text(encoding="utf-8")
@@ -413,7 +413,7 @@ def test_workflow_checks_out_the_exact_target_commit_with_full_history() -> None
 def test_workflow_verifies_the_target_is_the_current_main_head() -> None:
     text = _release_workflow_text()
     assert (
-        "Fail closed unless the target commit is the current origin main head"
+        "abort unless the target commit is the current origin main head"
         in text
     ), "the main-head equality check must be an explicit named step"
     assert 'git cat-file -e "${PL_TARGET_SHA}^{commit}"' in text, (
@@ -433,10 +433,10 @@ def test_main_head_guard_keeps_its_direction_and_exit() -> None:
     """
     run = _required_run_block(
         _release_workflow_text(),
-        "Fail closed unless the target commit is the current origin main head",
+        "abort unless the target commit is the current origin main head",
     )
     assert 'if [ "$main_head" != "$PL_TARGET_SHA" ]; then' in run, (
-        "the main-head guard must fail closed whenever the resolved head "
+        "the main-head guard must unconditional whenever the resolved head "
         "differs from the requested target; an inverted comparison lets "
         "a stale or off-main commit be tagged"
     )
@@ -456,7 +456,7 @@ def test_remote_tag_guard_fails_closed_on_query_error() -> None:
     """
     run = _required_run_block(
         _release_workflow_text(),
-        "Fail closed if the tag already exists locally or on the remote",
+        "Abort if the tag already exists locally or on the remote",
     )
     assert re.search(
         r'^\s*remote_tag_query="\(?\$\(git ls-remote --tags origin '
@@ -487,7 +487,7 @@ def test_remote_tag_guard_fails_closed_on_query_error() -> None:
     )
     assert 'if [ -n "$remote_tag_query" ]; then' in run, (
         "after a successful query, any nonempty output means the remote "
-        "tag exists and the guard must fail closed"
+        "tag exists and the guard must unconditional"
     )
     assert not re.search(r"if \[ -n \"\$\(git ls-remote", run), (
         "the remote-tag guard must not test ls-remote output inside an "
@@ -501,11 +501,11 @@ def test_release_existence_probe_distinguishes_404_from_other_statuses() -> None
 
     A generic ``gh release view`` exit 1 conflates 404 with 401/403/5xx
     and network failure; the probe must discriminate: 200 → exists →
-    fail; 404 → absent → proceed; anything else → fail closed.
+    fail; 404 → absent → proceed; anything else → unconditional.
     """
     run = _required_run_block(
         _release_workflow_text(),
-        "Fail closed if the GitHub Release already exists",
+        "Abort if the GitHub Release already exists",
     )
     assert not re.search(r"\bgh release view\b", run), (
         "the probe must not use `gh release view`: its generic exit 1 "
@@ -546,7 +546,7 @@ def test_release_existence_probe_distinguishes_404_from_other_statuses() -> None
 def test_release_probe_env_names_token_and_repository_explicitly() -> None:
     step = _step_yaml(
         _release_workflow_text(),
-        "Fail closed if the GitHub Release already exists",
+        "Abort if the GitHub Release already exists",
     )
     assert re.search(r"GH_TOKEN: \$\{\{ github\.token \}\}", step), (
         "the release-existence probe must authenticate with the job "
@@ -559,7 +559,7 @@ def test_release_probe_env_names_token_and_repository_explicitly() -> None:
     )
     run = _required_run_block(
         _release_workflow_text(),
-        "Fail closed if the GitHub Release already exists",
+        "Abort if the GitHub Release already exists",
     )
     assert '-H "Authorization: Bearer ${GH_TOKEN}"' in run, (
         "the probe must authenticate with the job token through the "
@@ -585,14 +585,14 @@ def test_every_validation_step_precedes_the_single_creation_step() -> None:
     creation_index = names.index(CREATION_STEP_NAME)
     assert creation_index == len(names) - 1, (
         "creation must be the last step: every validation runs before "
-        "anything is created (fail-closed ordering)"
+        "anything is created (unconditional ordering)"
     )
-    fail_closed_steps = [name for name in names if name.startswith("Fail closed")]
-    assert len(fail_closed_steps) >= 4, (
-        "the fail-closed checks (main-head equality, existing tag, "
+    abort_steps = [name for name in names if name.startswith(("Abort", "abort"))]
+    assert len(abort_steps) >= 4, (
+        "the unconditional checks (main-head equality, existing tag, "
         "existing release, consistency) must each be explicit steps"
     )
-    for name in fail_closed_steps:
+    for name in abort_steps:
         assert names.index(name) < creation_index, (
             f"validation step {name!r} must precede the creation step"
         )
@@ -723,11 +723,11 @@ def test_shell_steps_set_strict_error_handling() -> None:
     """
     text = _release_workflow_text()
     for step_name in (
-        "Fail closed unless the target commit is the current origin main head",
-        "Fail closed if the tag already exists locally or on the remote",
-        "Fail closed if the GitHub Release already exists",
+        "abort unless the target commit is the current origin main head",
+        "Abort if the tag already exists locally or on the remote",
+        "Abort if the GitHub Release already exists",
         "Collect existing public version tags",
-        "Fail closed on any release-consistency mismatch",
+        "Abort on any release-consistency mismatch",
     ):
         run = _required_run_block(text, step_name)
         assert run.splitlines()[0].strip() == "set -euo pipefail", (
@@ -800,7 +800,7 @@ def test_workflow_comments_state_the_intended_path_and_real_tradeoff() -> None:
 
 
 # ---------------------------------------------------------------------------
-# Embedded validation module: offline, pure, fail-closed
+# Embedded validation module: offline, pure, unconditional
 # ---------------------------------------------------------------------------
 
 
@@ -886,7 +886,7 @@ def test_module_cli_wires_argv_and_notes_file_behaviorally(
         ],
     )
     assert failed.returncode == 1, (
-        "a mismatched CLI invocation must exit nonzero (fail closed)"
+        "a mismatched CLI invocation must exit nonzero (unconditional)"
     )
     assert "release validation failed" in failed.stderr, (
         f"the CLI must report the reason on stderr; got {failed.stderr!r}"
@@ -991,7 +991,7 @@ def test_each_rule_violation_fails_closed_with_its_reason(
             existing_version_tags=existing,
         )
     assert reason in str(caught.value), (
-        f"expected the {reason!r} rule to fail closed; got {caught.value!r}"
+        f"expected the {reason!r} rule to unconditional; got {caught.value!r}"
     )
 
 
@@ -1001,7 +1001,7 @@ def test_current_development_version_is_rejected_fail_closed(
     """The version the package currently declares (0.0.1.dev0) is rejected.
 
     ``0.0.1.dev0`` is the development state the repository declares
-    today; requesting it as a release must fail closed with the
+    today; requesting it as a release must unconditionally with the
     development-release reason, offline, before anything is created.
     """
     module = _validation_module()
@@ -1030,7 +1030,7 @@ def test_valid_non_dev_prerelease_is_not_rejected(tmp_path: Path) -> None:
     """A pre-release version such as ``0.0.1rc1`` fails validation.
 
     The mechanism creates GitHub Releases without the prerelease flag,
-    so a pre-release version must fail closed with the
+    so a pre-release version must unconditionally with the
     prerelease-deferred reason rather than be mislabelled as a full
     release. ``test_prerelease_versions_are_deferred_fail_closed``
     below covers every PEP 440 pre-release phase.
@@ -1160,10 +1160,10 @@ def test_empty_unreleased_subsection_headings_remain_allowed(
 def test_prerelease_versions_are_deferred_fail_closed(
     tmp_path: Path, prerelease_version: str
 ) -> None:
-    """Pre-release versions are rejected fail-closed.
+    """Pre-release versions are rejected unconditionally.
 
     The controlled release mechanism does not create prerelease-marked
-    GitHub Releases, so ``a``/``b``/``rc`` segments must fail closed
+    GitHub Releases, so ``a``/``b``/``rc`` segments must unconditional
     exactly like ``.devN`` does: prerelease support is deferred until
     the creation step can label releases correctly. Every representative
     PEP 440 pre-release phase is covered.

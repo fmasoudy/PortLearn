@@ -7,7 +7,7 @@ from invented values; no provider-owned data is redistributed, and the suite
 never touches the network.
 
 Covered laws: decode-to-declared-table-form through the single ingestion
-chokepoint, fetch/decode split, frozen catalog with closed dataset kinds,
+chokepoint, fetch/decode split, fixed catalog with closed dataset kinds,
 sentinel-to-absence mapping, period-end and day-last instant mapping through
 the shared period-calendar substrate, declared-availability stamping with no
 code default, fixture hash pinning, naive-free instants, the not-investable
@@ -371,7 +371,7 @@ def test_decode_adopts_retrieval_provenance_and_detects_hash_drift(
 
 
 def test_unknown_dataset_identifier_rejects() -> None:
-    """An unknown dataset id rejects fail-closed with ValueError."""
+    """An unknown dataset id rejects unconditionally with ValueError."""
     with pytest.raises(ValueError, match="no_such_dataset"):
         ff.decode(
             _fixture_bytes(FACTORS_CSV),
@@ -390,7 +390,7 @@ def test_unknown_dataset_identifier_rejects() -> None:
 
 
 def test_catalog_is_frozen_with_closed_dataset_kinds() -> None:
-    """The frozen catalog names exactly the supported research files."""
+    """The fixed catalog names exactly the supported research files."""
     assert set(ff.FF_DATASETS) == {
         FACTORS_CSV,
         FACTORS_TXT,
@@ -478,7 +478,7 @@ def test_declared_fixed_lag_stamps_records_and_provenance() -> None:
 
 
 def test_absent_availability_policy_fails_closed_with_no_default() -> None:
-    """No policy -> fail-closed. The adapter never supplies a default."""
+    """No policy -> unconditional. The adapter never supplies a default."""
     with pytest.raises(ValueError, match="availability is mandatory"):
         ff.decode(
             _fixture_bytes(FACTORS_CSV),

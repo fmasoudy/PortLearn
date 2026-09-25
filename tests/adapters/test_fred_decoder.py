@@ -1,6 +1,6 @@
 """Contract tests for the FRED adapter.
 
-Every node maps to a frozen decoding law; the numbered section headers
+Every node maps to a fixed decoding law; the numbered section headers
 below cite the law each node enforces.  All decoding is network-free
 (monkeypatched fetch; local synthetic fixtures); the L11 mode fence and
 the L4 false-vintage boundary are the named adversarial nodes.
@@ -213,7 +213,7 @@ def test_fetch_rejects_missing_api_key_before_any_network(
 def test_fetch_rejects_key_smuggling_and_vintage_parameters(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """api_key in params, and true-vintage parameters, reject fail-closed."""
+    """api_key in params, and true-vintage parameters, reject unconditionally."""
     monkeypatch.setattr(fred, "urlopen", _fake_urlopen(b"{}"))
     with pytest.raises(ValueError, match="api_key"):
         fred.fetch("SYNTHCPIM", _API_KEY, {"api_key": _API_KEY})
@@ -297,7 +297,7 @@ def test_data_mode_is_labeled_in_provenance() -> None:
 
 
 def test_point_in_time_rejects_without_source_vintage_evidence() -> None:
-    """POINT_IN_TIME rejects fail-closed even with realtime fields present."""
+    """POINT_IN_TIME rejects unconditionally even with realtime fields present."""
     with pytest.raises(fred.PseudoVintageError, match="POINT_IN_TIME"):
         _decode(data_mode=fred.POINT_IN_TIME)
 
@@ -476,7 +476,7 @@ def test_unsupported_frequency_rejects_against_closed_set() -> None:
 
 
 def test_explicit_frequency_must_agree_with_metadata() -> None:
-    """A declared frequency contradicting metadata rejects fail-closed."""
+    """A declared frequency contradicting metadata rejects unconditionally."""
     with pytest.raises(ValueError, match="frequency"):
         _decode(frequency="Daily", metadata_bytes=_fixture_bytes(META_CPIM))
 
@@ -529,7 +529,7 @@ def test_fixture_hashes_are_pinned_and_manifest_agrees() -> None:
 
 
 # --------------------------------------------------------------------------- #
-# L10 — the module-owned error taxonomy, fail-closed
+# L10 — the module-owned error taxonomy, unconditional
 # --------------------------------------------------------------------------- #
 
 
@@ -544,7 +544,7 @@ def test_unknown_series_rejects_with_module_error() -> None:
 
 
 def test_malformed_json_rejects_as_provider_response_error() -> None:
-    """Bytes that are not JSON reject fail-closed."""
+    """Bytes that are not JSON reject unconditionally."""
     with pytest.raises(fred.ProviderResponseError, match="JSON"):
         fred.decode(
             b"not json at all", "SYNTHCPIM", _policy(),
@@ -554,7 +554,7 @@ def test_malformed_json_rejects_as_provider_response_error() -> None:
 
 
 def test_shape_errors_reject_as_provider_response_error() -> None:
-    """Missing observations / mismatched series id reject fail-closed."""
+    """Missing observations / mismatched series id reject unconditionally."""
     no_observations = json.dumps({
         "series_id": "SYNTHCPIM",
         "realtime_start": REALTIME_END,
@@ -593,7 +593,7 @@ def test_missing_realtime_window_rejects_silent_window_barred() -> None:
 def test_http_error_maps_to_provider_response_error(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """Provider HTTP failures surface as the module error, fail-closed."""
+    """Provider HTTP failures surface as the module error, ."""
     def _raise(*args: object, **kwargs: object) -> None:
         raise HTTPError(
             "https://api.stlouisfed.org/fred/series/observations",

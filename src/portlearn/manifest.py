@@ -11,7 +11,7 @@ randomness control it does not provide.
 
 Design laws honoured here:
 
-* **Identity is fail-closed** — blank ``run_id`` /
+* **Identity is validated strictly** — blank ``run_id`` /
   ``python_version`` / ``package_version``, an empty or blank-valued
   ``dependency_pins`` mapping, or an empty ``commands`` sequence
   rejects with ``ValueError``.
@@ -79,7 +79,7 @@ class RunManifest:
     field: seeds live in run parameters, not run identity.
 
     ``created_at`` keeps its original UTC offset through every
-    serialization round trip; equality is canonical-JSON byte equality.
+    serialization round trip; equality is exact canonical-JSON equality.
     """
 
     __slots__ = (
@@ -140,7 +140,7 @@ class RunManifest:
             raise ValueError(
                 "RunManifest.dependency_pins must contain at least one "
                 "(distribution, pin) pair — a manifest with no dependency "
-                "provenance is not fail-closed."
+                "provenance is not unconditional."
             )
         for distribution, pin in dependency_pins.items():
             if not isinstance(distribution, str) or not distribution.strip():
@@ -235,7 +235,7 @@ class RunManifest:
         except _DuplicateKeyError as duplicate:
             raise ValueError(
                 "RunManifest.from_json rejects JSON text with duplicate "
-                f"object keys — fail-closed: {duplicate}."
+                f"object keys — unconditional: {duplicate}."
             ) from None
         except ValueError as malformed:
             raise ValueError(

@@ -1,4 +1,4 @@
-"""Fail-closed verification of the PortLearn distribution built by ``uv build``.
+"""Strict verification of the PortLearn distribution built by ``uv build``.
 
 Executed verbatim after the build::
 
@@ -11,7 +11,7 @@ ambiguity:
 
 1. exactly one wheel and one source distribution produced by ``uv build``
    exist under ``dist/``;
-2. the wheel contains the complete package surface — the static frozen
+2. the wheel contains the complete package surface — the static fixed
    floor of contract modules plus every shippable file currently under
    ``src/portlearn/`` (``.py`` modules and the ``py.typed`` marker,
    derived recursively so subpackages are included) — so a wheel missing
@@ -64,13 +64,13 @@ LOCK_PATH = REPOSITORY_ROOT / "uv.lock"
 DISTRIBUTION_NAME = "portlearn"
 PACKAGE_SOURCE_ROOT = REPOSITORY_ROOT / "src" / DISTRIBUTION_NAME
 
-#: The frozen contract floor a built wheel must always carry, whatever the
+#: The fixed contract floor a built wheel must always carry, whatever the
 #: source tree later adds: the seven foundation members plus the public
 #: diagnostics subpackage marker. A source-tree deletion cannot shrink this
-#: floor, so a wheel missing any frozen contract module — or silently
+#: floor, so a wheel missing any fixed contract module — or silently
 #: omitting the entire diagnostics subpackage — fails verification even
 #: when the derived surface has moved on. Only the public package marker
-#: is frozen: exact private per-block filenames are implementation detail
+#: is fixed: exact private per-block filenames are implementation detail
 #: and join through the recursive derivation alone. Pinned by
 #: ``tests/test_package_contract.py::test_required_wheel_members_cover_the_complete_package_surface``.
 REQUIRED_FLOOR_MEMBERS = (
@@ -91,10 +91,10 @@ def _derived_package_surface() -> tuple[str, ...]:
     Derivation (not enumeration) keeps this the single source of truth:
     a module or subpackage added to the source tree joins
     the required wheel surface automatically, so the check can never again
-    go stale — a new module colliding with a frozen static list is the exact
+    go stale — a new module colliding with a pinned static list is the exact
     defect class this hybrid cures. Recursion (``rglob``) includes
     subpackages, so a wheel silently omitting an entire subpackage fails.
-    Fail-closed: an unreadable or empty source tree is an error, never a
+    Strict rejection: an unreadable or empty source tree is an error, never a
     vacuous pass.
     """
     if not PACKAGE_SOURCE_ROOT.is_dir():
@@ -115,9 +115,9 @@ def _derived_package_surface() -> tuple[str, ...]:
     return tuple(sorted(members))
 
 
-#: The complete surface a built wheel must carry: the frozen floor UNION the
+#: The complete surface a built wheel must carry: the fixed floor UNION the
 #: recursively derived source surface — additions auto-join (derivation),
-#: deletions of frozen contract modules stay detected (floor). Pinned by
+#: deletions of fixed contract modules stay detected (floor). Pinned by
 #: ``tests/test_package_contract.py::test_required_wheel_members_cover_the_complete_package_surface``.
 REQUIRED_WHEEL_MEMBERS = tuple(
     sorted(set(REQUIRED_FLOOR_MEMBERS) | set(_derived_package_surface()))
@@ -190,7 +190,7 @@ def declared_version() -> str:
 
 
 def locate_distribution_artifacts() -> tuple[Path, Path]:
-    """Return (wheel, sdist) — exactly one of each, else fail closed."""
+    """Return (wheel, sdist) — exactly one of each, else abort."""
     if not DIST_DIRECTORY.is_dir():
         fail("dist/ does not exist; run `uv build` first")
 

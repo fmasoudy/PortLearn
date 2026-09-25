@@ -5,7 +5,7 @@ public dataset module beside its package re-export, the ingestion
 chokepoint's home inside the data package, the provider-neutral record
 primitives in one shared records module, the FF-only alias surface
 living on the FF provider facade, the lazy package-import law, the exact
-on-disk file layout, and the absence of internal governance terminology
+on-disk file layout, and the absence of internal development terminology
 in the affected production sources (public names, constants, messages,
 docstrings, and comments).
 """
@@ -275,7 +275,7 @@ def test_file_layout_is_exact() -> None:
 
 def test_affected_sources_carry_no_internal_governance_terms() -> None:
     """The affected production sources speak domain/software language
-    only: no internal governance terminology in public names, constants,
+    only: no internal development terminology in public names, constants,
     messages, docstrings, or comments."""
     sources = [path for path in AFFECTED_SOURCES if path.is_file()]
     assert sources, "no affected sources found to scan"
@@ -285,6 +285,6 @@ def test_affected_sources_carry_no_internal_governance_terms() -> None:
         if hits:
             offenders[path.relative_to(REPOSITORY_ROOT).as_posix()] = hits
     assert not offenders, (
-        f"internal governance terminology found in affected production "
+        f"internal development terminology found in affected production "
         f"sources: {offenders}"
     )

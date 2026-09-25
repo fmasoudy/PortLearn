@@ -4,15 +4,17 @@
 # The distribution name and the PEP 440 version declared here are the single
 # version authority for the package.
 name = "portlearn"
-version = "0.0.1.dev2"
+version = "0.0.1.dev3"
 
 # Minimum supported Python; no untested upper-version exclusion.
 requires-python = ">=3.11"
 
-# Runtime dependencies: pandas is the sole unconditional core runtime
-# dependency — evidence-supported floor
-# (first Python-3.13-compatible release), no upper cap.
-dependencies = ["pandas>=2.2.3"]
+# Runtime dependencies: pandas and scipy are the unconditional core
+# runtime dependencies — evidence-supported floors, no upper caps.
+# SciPy is core: it backs the minimum-variance and
+# mean-variance strategies, but is imported lazily inside the private
+# optimizer adapter, never at package import.
+dependencies = ["pandas>=2.2.3", "scipy>=1.14"]
 
 # Public packaging metadata (PEP 621): one-line description of present
 # functionality only; README and licence referenced, never duplicated.
@@ -25,16 +27,20 @@ license = "Apache-2.0"
 Repository = "https://github.com/fmasoudy/PortLearn"
 Issues = "https://github.com/fmasoudy/PortLearn/issues"
 
-# The two optional capability groups:
+# The optional capability groups:
 # pyarrow is pulled only by portlearn[parquet] and matplotlib only by
 # portlearn[plot]; neither is ever imported by the core package.
+# (The former portlearn[optimization] extra was removed
+# when SciPy became a core dependency.)
 [project.optional-dependencies]
 parquet = ["pyarrow>=21.0.0,<26"]
 plot = ["matplotlib>=3.9.2"]
 
-# Development dependencies: the test harness, the source-quality checker,
-# and the plotting stack at exactly the plot-extra requirement,
-# so a development environment can exercise the renderer.
+# Development dependencies: the test harness, the source-quality
+# checker, and a dev mirror of the plot extra (matplotlib at exactly
+# the plot-extra requirement) so a development environment can
+# exercise the renderer test path. scipy no longer needs a dev mirror:
+# it is an unconditional core runtime dependency.
 [dependency-groups]
 dev = [
     "pytest>=9.1.1,<10",

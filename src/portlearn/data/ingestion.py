@@ -122,7 +122,7 @@ class AvailabilityPolicy:
     Instances are interned per declaration: equal declarations return
     the identical object, so provenance can be compared by identity.
     There is no default policy and no inference — a schema without an
-    explicit policy rejects fail-closed.
+    explicit policy is rejected.
     """
 
     mode: str
@@ -298,7 +298,7 @@ class SourceProvenance:
 
 
 def _cell_instant(cell: Any, field_name: str) -> datetime:
-    """Decode one time cell to a UTC-normalized instant, fail-closed.
+    """Decode one time cell to a UTC-normalized instant, and reject.
 
     ISO-8601 strings decode via :meth:`datetime.datetime.fromisoformat`
     and then — like every datetime or date input — pass through
@@ -314,7 +314,7 @@ def _cell_instant(cell: Any, field_name: str) -> datetime:
             raise NaiveTimestampError(
                 f"{field_name} is not a parseable ISO-8601 timestamp "
                 f"carrying an explicit UTC offset; got {cell!r}. Time "
-                "fields decode exclusively through the frozen instant "
+                "fields decode exclusively through the fixed instant "
                 "law — a string without an offset cannot be placed on "
                 "the single timeline without assuming a default "
                 "timezone, and PortLearn never does."
@@ -346,7 +346,7 @@ def _build_record(
             "str | int | float | bool | None; got "
             f"{type(value).__name__}: {value!r}. Ingestion performs no "
             "object passthrough and no dtype inference — a value outside "
-            "the domain is rejected fail-closed."
+            "the domain is rejected unconditionally."
         )
     observation = _cell_instant(
         row.get(schema.observation_time_column), "observation_time"
@@ -580,7 +580,7 @@ def _csv_materialize(source: str | os.PathLike[str]) -> tuple[str, str, str]:
 def _require_declared_columns(
     header: list[str], schema: DeclaredTableSchema
 ) -> None:
-    """Reject (fail-closed) any declared column absent from the header."""
+    """Reject (unconditional) any declared column absent from the header."""
     present = set(header)
     for column in (
         schema.series_id_column,

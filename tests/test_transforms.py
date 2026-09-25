@@ -1,16 +1,16 @@
 """Behavioral contract tests for the feature-transform module.
 
-These tests enforce the approved transform laws adversarially: window
+These tests enforce the specified transform laws adversarially: window
 membership keys on availability (a record late to be available never
 joins a window timestamped before its availability), outputs are
-lineage-monotone under the frozen exported validator, insufficient
-windows fail closed (never NaN, never partial output, never
+lineage-monotone under the fixed exported validator, insufficient
+windows unconditional (never NaN, never partial output, never
 imputation), scaler statistics come only from the declared fit window
-and are frozen after fit, lag shifts positions with availability
+and are fixed after fit, lag shifts positions with availability
 floored at the shifted instant, and carry-forward is bounded, declared,
 and absent beyond its bound. A dependency-free foreign-transform
 stand-in exercises the researcher-side wrapper pattern behind the
-frozen protocol.
+fixed protocol.
 """
 
 from __future__ import annotations
@@ -125,7 +125,7 @@ def test_rolling_volatility_window_excludes_records_late_to_be_available() -> No
 
 
 # --------------------------------------------------------------------------- #
-# Output timing is lineage-monotone under the frozen validator
+# Output timing is lineage-monotone under the strict validator
 # --------------------------------------------------------------------------- #
 
 
@@ -135,7 +135,7 @@ def test_rolling_outputs_pass_the_frozen_lineage_validator() -> None:
     assert len(outputs) == 3
     for output in outputs:
         # Each output derives from the records admitted at its own
-        # reference instant — the frozen law's own scope ("the latest
+        # reference instant — the fixed law's own scope ("the latest
         # input it derives from").
         admitted = [
             record
@@ -151,10 +151,10 @@ def test_scaler_outputs_pass_the_frozen_lineage_validator() -> None:
     records = [obs(4, 4, 4.0), obs(5, 5, 5.0)]
     outputs = scaler.transform(records)
     # Each output derives from the fit window and its own record — the
-    # derivation set the frozen law scopes itself to.
+    # derivation set the fixed law scopes itself to.
     for record, output in zip(records, outputs):
         require_feature_lineage(fit + [record], [output])
-    # The frozen validator itself — not a restatement — rejects a
+    # The strict validator itself — not a restatement — rejects a
     # hand-built output declared available before its inputs.
     hand_built = TimedObservation("px|standard_scaled", day(1), day(2), 0.0)
     with pytest.raises(FeatureLineageError):
@@ -179,7 +179,7 @@ def test_scaler_statistics_come_only_from_the_declared_fit_window() -> None:
         statistics.pstdev([1.0, 2.0, 6.0])
     )
     # A record far beyond the declared fit window never moves the
-    # frozen statistics: it is scaled by them, never absorbed into them.
+    # fixed statistics: it is scaled by them, never absorbed into them.
     outputs = scaler.transform([obs(9, 9, 1000.0)])
     assert outputs[0].value == pytest.approx(
         (1000.0 - 3.0) / statistics.pstdev([1.0, 2.0, 6.0])
@@ -206,7 +206,7 @@ def test_scaler_statistics_are_frozen_after_fit() -> None:
 
 
 # --------------------------------------------------------------------------- #
-# Insufficient windows fail closed
+# Insufficient windows unconditional
 # --------------------------------------------------------------------------- #
 
 
@@ -253,7 +253,7 @@ def test_scaler_fit_window_excludes_records_beyond_the_declared_window() -> None
 
 def test_future_fit_scaler_outputs_are_timing_killed_by_the_frozen_validator() -> None:
     # The declared fit window contains a record not available until
-    # day 9, so the frozen statistics are knowable only then.
+    # day 9, so the fixed statistics are knowable only then.
     fit = [obs(1, 1, 1.0), obs(2, 2, 2.0), obs(3, 9, 6.0)]
     scaler = StandardScaler(fit)
     records = [obs(4, 4, 4.0), obs(5, 5, 5.0)]
@@ -262,7 +262,7 @@ def test_future_fit_scaler_outputs_are_timing_killed_by_the_frozen_validator() -
         assert output.available_time == day(9)
     require_feature_lineage(fit + records, outputs)
     # A hand-stamped output dated at transform-input timing is future
-    # normalization; the frozen validator kills it.
+    # normalization; the strict validator kills it.
     leaked = TimedObservation(
         "px|standard_scaled", day(4), day(5), outputs[0].value
     )
@@ -391,7 +391,7 @@ def test_lookback_lengths_must_be_declared_explicitly() -> None:
 
 
 # --------------------------------------------------------------------------- #
-# Foreign-transform stand-in behind the frozen protocol
+# Foreign-transform stand-in behind the fixed protocol
 # --------------------------------------------------------------------------- #
 
 
@@ -517,7 +517,7 @@ def test_error_taxonomy_reuses_frozen_errors_and_owns_valueerror_subclasses() ->
     for error in (WindowDeclarationError, InsufficientWindowError):
         assert error not in FROZEN_CONTRACT_ERRORS
     assert len(FROZEN_CONTRACT_ERRORS) == 6
-    # Mixed-series input is an identity failure: the frozen
+    # Mixed-series input is an identity failure: the fixed
     # observations error, reused — never re-defined here.
     mixed = [obs(1, 1, 1.0, series="a"), obs(2, 2, 2.0, series="b")]
     single_series_transforms = [
@@ -534,7 +534,7 @@ def test_error_taxonomy_reuses_frozen_errors_and_owns_valueerror_subclasses() ->
     scaler = StandardScaler([obs(1, 1, 1.0), obs(2, 2, 3.0)])
     with pytest.raises(AmbiguousObservationError):
         scaler.transform(mixed)
-    # Naive reference instants are rejected by the frozen timing error,
+    # Naive reference instants are rejected by the fixed timing error,
     # reused at this surface.
     with pytest.raises(NaiveTimestampError):
         CarryForward(

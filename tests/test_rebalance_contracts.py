@@ -1,18 +1,18 @@
 """Behavior-named conformance suite for the rebalancing and drift contract.
 
-These tests freeze the approved rebalancing and portfolio-drift behavioral
+These tests freeze the rebalancing and portfolio-drift behavioral
 contract: strictly increasing aware-instant rebalance schedules (calendar
 generated or explicitly enumerated — the same object either way), holding
 plans binding two independently declared instant sequences (rebalance
 decisions and accounting), buy-and-hold drift over caller-supplied per-asset
-gross growth factors with a fail-closed strictly-positive-finite
+gross growth factors with a unconditional strictly-positive-finite
 portfolio-growth denominator, exact-fill execution of a target at its
 execution instant with strictly increasing executions across rebalances,
-availability gating of factor inputs at the instant of use, and full
+availability checking of factor inputs at the instant of use, and full
 immutability of every input and output.
 
 Every expected value is hand-computed on exact cases (see each test); the
-arithmetic floors are pinned against the design preflight oracle, including
+arithmetic floors are pinned against the design preflight reference, including
 edge-case counterexamples: the total-loss edge ``(0.5, 0.5) × (0, 1.1)
 → (0, 1)``, the leveraged-book denominator rejections ``(2, −1) × (0.1, 2)
 → D = −1.8`` and ``(2, −1) × (0.5, 1) → D = 0``, and the path-identity
@@ -195,7 +195,7 @@ def test_single_instant_schedule_is_legal() -> None:
 
 
 def test_empty_schedule_rejected() -> None:
-    """An empty schedule names no decisions and is rejected fail-closed."""
+    """An empty schedule names no decisions and is rejected unconditionally."""
     with pytest.raises(ValueError, match="at least one"):
         RebalanceSchedule([])
 
@@ -222,7 +222,7 @@ def test_schedule_rejects_non_increasing_instants() -> None:
 
 def test_schedule_rejects_naive_or_non_instant_entries() -> None:
     """Naive datetimes, bare dates, and non-instant entries all reject with
-    the frozen naive-timestamp error; no default zone is ever assumed."""
+    the fixed naive-timestamp error; no default zone is ever assumed."""
     with pytest.raises(NaiveTimestampError):
         RebalanceSchedule([datetime(2026, 1, 1)])  # noqa: DTZ001 — deliberately naive
     with pytest.raises(NaiveTimestampError):
@@ -315,7 +315,7 @@ def test_negative_growth_factor_rejected() -> None:
 
 
 def test_non_finite_growth_factors_rejected() -> None:
-    """Infinite and NaN growth factors reject fail-closed."""
+    """Infinite and NaN growth factors reject unconditionally."""
     for bad in (float("inf"), float("-inf"), float("nan")):
         with pytest.raises(ValueError, match="finite"):
             drift_weights(_post({"A": 0.5, "B": 0.5}), {"A": bad, "B": 1.0})
@@ -332,7 +332,7 @@ def test_huge_int_growth_factor_fails_closed_without_overflow_leak() -> None:
 
 def test_term_overflow_to_infinity_fails_closed() -> None:
     """Individually finite inputs whose product terms overflow to infinity
-    reject fail-closed before any aggregation."""
+    reject unconditionally before any aggregation."""
     with pytest.raises(ValueError, match="finite"):
         drift_weights(
             _post({"A": 1e155, "B": 1.0 - 1e155}),
@@ -362,7 +362,7 @@ def test_huge_proportional_factors_are_lawful_arithmetic() -> None:
 
 
 def test_growth_factor_universe_must_match_weights_exactly() -> None:
-    """The universe is frozen over the holding interval: factors naming
+    """The universe is fixed over the holding interval: factors naming
     absent assets or omitting held assets both reject."""
     book = _post({"A": 0.6, "B": 0.4})
     with pytest.raises(ValueError, match="universe"):
@@ -501,7 +501,7 @@ def test_same_instant_decide_and_execute_is_admissible() -> None:
 
 
 def test_execution_before_decision_rejected() -> None:
-    """A trade cannot execute before its decision: the frozen timing object
+    """A trade cannot execute before its decision: the fixed timing object
     rejects it, and so do the execution surfaces standing alone."""
     decision = datetime(2026, 2, 1, tzinfo=UTC)
     execution = datetime(2026, 1, 31, tzinfo=UTC)
@@ -699,7 +699,7 @@ def test_no_rebalance_accounting_state_equals_drift_of_last_post_trade_state() -
 
 
 def test_schedule_and_plan_objects_are_immutable() -> None:
-    """Schedules and plans are frozen declarations: attribute assignment
+    """Schedules and plans are fixed declarations: attribute assignment
     rejects, and mutating the source iterables after construction changes
     nothing."""
     instants = [datetime(2026, 1, 31, tzinfo=UTC)]
@@ -717,7 +717,7 @@ def test_schedule_and_plan_objects_are_immutable() -> None:
 
 
 # ---------------------------------------------------------------------------
-# Availability gating of factor inputs
+# Availability checking of factor inputs
 # ---------------------------------------------------------------------------
 
 
@@ -739,7 +739,7 @@ def test_factors_available_after_decision_rejected_as_future_information() -> No
         require_factors_available(in_gap, decision)
     assert in_gap.available_time < execution  # genuinely inside the gap
     with pytest.raises(NaiveTimestampError):
-        require_factors_available(late, datetime(2026, 1, 31))  # noqa: DTZ001 — naive gate
+        require_factors_available(late, datetime(2026, 1, 31))  # noqa: DTZ001 — naive check
 
 
 def test_factors_available_at_or_before_decision_admitted() -> None:
@@ -757,7 +757,7 @@ def test_factors_available_at_or_before_decision_admitted() -> None:
 
 
 def test_factor_provenance_objects_validate_and_snapshot_fail_closed() -> None:
-    """Factor provenance objects validate their mapping fail-closed (blank
+    """Factor provenance objects validate their mapping unconditional (blank
     identifiers, bools, non-reals, negative, non-finite factors), require
     an aware availability instant, and snapshot immutably."""
     with pytest.raises(ValueError, match="identifier"):
@@ -789,7 +789,7 @@ def test_factors_consumed_before_availability_reject_at_the_use_instant() -> Non
     same factors first available 2026-02-01 UTC reject as look-ahead when
     consumed at the earlier use instant 2026-01-31 UTC (the use instant of
     factors forming a target at a decision). The keyword ``use_time``
-    names the gate."""
+    names the check."""
     factors = GrowthFactors({"A": 1.1, "B": 0.95}, datetime(2026, 2, 1, tzinfo=UTC))
     with pytest.raises(FutureInformationError):
         require_factors_available(
@@ -802,7 +802,7 @@ def test_same_factors_admitted_at_a_later_use_instant() -> None:
     realized growth through a later execution legitimately contains
     information unavailable at the decision, so factors first available
     2026-02-01 UTC consumed at use instant 2026-02-02 UTC (pre-trade
-    drift at the execution) pass the gate and return None."""
+    drift at the execution) pass the check and return None."""
     factors = GrowthFactors({"A": 1.1, "B": 0.95}, datetime(2026, 2, 1, tzinfo=UTC))
     assert (
         require_factors_available(

@@ -1,7 +1,7 @@
 """Package-contract tests for the PortLearn distribution.
 
 These tests enforce the public package and dependency contract:
-distribution/import identity, the frozen development version, the
+distribution/import identity, the fixed development version, the
 pandas core dependency with exactly the one guarded optional capability
 group, the bounded
 hatchling build backend, the exact development dependency group, and
@@ -23,9 +23,9 @@ import pytest
 REPOSITORY_ROOT = Path(__file__).resolve().parents[1]
 PYPROJECT_PATH = REPOSITORY_ROOT / "pyproject.toml"
 
-# Frozen package-contract values.
+# Pinned package-contract values.
 DISTRIBUTION_NAME = "portlearn"
-FROZEN_DEVELOPMENT_VERSION = "0.0.1.dev2"
+FROZEN_DEVELOPMENT_VERSION = "0.0.1.dev3"
 REQUIRES_PYTHON = ">=3.11"
 BUILD_REQUIRES = ["hatchling>=1.32.0,<2"]
 BUILD_BACKEND = "hatchling.build"
@@ -38,9 +38,11 @@ PUBLIC_REPOSITORY_URL = "https://github.com/fmasoudy/PortLearn"
 PUBLIC_ISSUES_URL = "https://github.com/fmasoudy/PortLearn/issues"
 
 # The sole core runtime dependency: pandas with an evidence-supported
-# floor and no upper cap — the first and only core runtime dependency
-# first and only core runtime dependency the distribution declares.
+# Core runtime dependencies: pandas and scipy, each with an
+# evidence-supported floor and no upper cap — the unconditional core
+# runtime dependencies the distribution declares.
 PANDAS_CORE_REQUIREMENT = "pandas>=2.2.3"
+SCIPY_CORE_REQUIREMENT = "scipy>=1.14"
 
 
 @pytest.fixture(scope="module")
@@ -61,13 +63,13 @@ def project_table(pyproject: dict) -> dict:
 
 def test_pyproject_declares_distribution_identity(project_table: dict) -> None:
     assert project_table.get("name") == DISTRIBUTION_NAME, (
-        f"[project] name must be the frozen distribution name {DISTRIBUTION_NAME!r}"
+        f"[project] name must be the fixed distribution name {DISTRIBUTION_NAME!r}"
     )
 
 
 def test_pyproject_declares_frozen_development_version(project_table: dict) -> None:
     assert project_table.get("version") == FROZEN_DEVELOPMENT_VERSION, (
-        "[project] version must be the frozen PEP 440 development release "
+        "[project] version must be the fixed PEP 440 development release "
         f"{FROZEN_DEVELOPMENT_VERSION!r}"
     )
 
@@ -88,22 +90,22 @@ def test_package_contract_pins_core_pandas_and_frozen_parquet_extra(
 ) -> None:
     """Core runtime dependencies are exactly ``["pandas>=2.2.3"]``
     (evidence-supported floor, no upper cap) and the parquet extra
-    remains the frozen guarded pin, unchanged by the plot-extra
+    remains the fixed guarded pin, unchanged by the plot-extra
     amendment; the exact whole-table shape — including the ``plot``
     extra — is owned by
     ``test_pyproject_declares_plot_extra_with_matplotlib_floor_not_core``
-    (floor 29) so the two oracles can never contradict each other."""
+    (floor 29) so the two references can never contradict each other."""
     runtime = project_table.get("dependencies", [])
-    assert runtime == [PANDAS_CORE_REQUIREMENT], (
-        "the sole core runtime dependency is pandas with the "
-        f"evidence-supported floor and no upper cap; expected "
-        f"['{PANDAS_CORE_REQUIREMENT}'], found {runtime!r}"
+    assert runtime == [PANDAS_CORE_REQUIREMENT, SCIPY_CORE_REQUIREMENT], (
+        "the core runtime dependencies are pandas and scipy, each with "
+        "an evidence-supported floor and no upper cap; "
+        f"expected ['{PANDAS_CORE_REQUIREMENT}', '{SCIPY_CORE_REQUIREMENT}'], found {runtime!r}"
     )
 
     parquet_pin = "pyarrow>=21.0.0,<26"
     optional = project_table.get("optional-dependencies", {})
     assert optional.get("parquet") == [parquet_pin], (
-        "the guarded parquet extra must remain the frozen pin "
+        "the guarded parquet extra must remain the fixed pin "
         f"['{parquet_pin}'] through later amendments; found "
         f"{optional.get('parquet')!r}"
     )
@@ -132,27 +134,31 @@ def test_project_urls_declare_the_canonical_repository_and_issues(
 def test_pyproject_declares_plot_extra_with_matplotlib_floor_not_core(
     project_table: dict,
 ) -> None:
-    """The optional-dependency table carries exactly the two guarded
-    capability groups — the frozen parquet extra and the new ``plot``
+    """The optional-dependency table carries exactly the three guarded
+    capability groups — the fixed parquet extra, the ``plot`` extra, and the new ``optimization``
     extra with the ``matplotlib>=3.9.2`` floor — while the core runtime
     dependency set remains pandas alone: matplotlib is never core
     (rendering is an optional capability behind ``PlotSpec.render()``,
     the sole public matplotlib boundary)."""
     runtime = project_table.get("dependencies", [])
-    assert runtime == [PANDAS_CORE_REQUIREMENT], (
+    assert runtime == [PANDAS_CORE_REQUIREMENT, SCIPY_CORE_REQUIREMENT], (
         "matplotlib must never join the core runtime dependencies: the "
-        "sole core dependency remains pandas; found "
+        "core dependencies remain pandas and scipy; found "
         f"{runtime!r}"
     )
 
     parquet_pin = "pyarrow>=21.0.0,<26"
     plot_pin = "matplotlib>=3.9.2"
     optional = project_table.get("optional-dependencies", {})
-    assert optional == {"parquet": [parquet_pin], "plot": [plot_pin]}, (
+    assert optional == {
+        "parquet": [parquet_pin],
+        "plot": [plot_pin],
+    }, (
         "the optional-dependency table must be exactly the guarded "
         f"parquet extra {{'parquet': ['{parquet_pin}']}} and the plot "
         f"extra {{'plot': ['{plot_pin}']}} with the evidence-supported "
-        f"matplotlib floor; found {optional!r}"
+        "matplotlib floor; the former optimization extra was removed by "
+        f"scipy became core; found {optional!r}"
     )
 
 
@@ -172,7 +178,7 @@ def test_wheel_verifier_pins_the_diagnostics_subpackage_floor() -> None:
     only: the subpackage marker a wheel silently omitting
     ``portlearn.data.diagnostics`` would lack, and never a private
     per-block filename — exact private filenames are implementation
-    detail and expressly not frozen, so private modules join through
+    detail and expressly not fixed, so internal modules join through
     the recursive derivation alone."""
     module = _verification_module()
     floor = set(module["REQUIRED_FLOOR_MEMBERS"])
@@ -189,9 +195,9 @@ def test_wheel_verifier_pins_the_diagnostics_subpackage_floor() -> None:
         if member.startswith(f"{DISTRIBUTION_NAME}/data/diagnostics/")
     }
     assert diagnostics_entries == {PUBLIC_DIAGNOSTICS_PACKAGE_MEMBER}, (
-        "the frozen floor must not pin private diagnostics filenames "
+        "the fixed floor must not pin private diagnostics filenames "
         "(exact private filenames are implementation detail); "
-        f"only the public package marker may be frozen, found "
+        f"only the public package marker may be fixed, found "
         f"{sorted(diagnostics_entries)}"
     )
 
@@ -217,20 +223,19 @@ def test_wheel_verifier_pins_the_diagnostics_subpackage_floor() -> None:
         )
     assert "callable(getattr(diagnostics" in probe, (
         "the probe must verify the five blocks through public attribute "
-        "access on the diagnostics module, never through private module "
+        "access on the diagnostics module, never through internal module "
         "paths"
     )
     assert f"{DISTRIBUTION_NAME}.data.diagnostics." not in probe, (
         "the probe must make no private diagnostics module-path "
-        "assumption (private filenames are not frozen)"
+        "assumption (private filenames are not fixed)"
     )
     assert '"pandas" in sys.modules' in probe, (
         "the pandas proof (importing portlearn.data.dataset "
         "triggers the core pandas import) must be preserved in the probe"
     )
     assert "to_pandas" in probe, (
-        "the ResearchDataset.to_pandas presence proof must be "
-        "preserved in the probe"
+        "the ResearchDataset.to_pandas presence proof must be preserved in the probe"
     )
     assert "portlearn[plot]" in probe, (
         "the probe's missing-extra render refusal must identify the "
@@ -238,7 +243,9 @@ def test_wheel_verifier_pins_the_diagnostics_subpackage_floor() -> None:
     )
 
 
-def test_wheel_verifier_installs_locked_dependencies_through_lock_aware_offline_sync() -> None:
+def test_wheel_verifier_installs_locked_dependencies_through_lock_aware_offline_sync() -> (
+    None
+):
     """The verifier's dependency stage must be lock-aware, not pip-style.
 
     A bare ``uv pip install --offline <pins>`` resolves requirements on its
@@ -309,12 +316,22 @@ def test_build_backend_is_bounded_hatchling(pyproject: dict) -> None:
 def test_development_group_is_exactly_pytest_ruff_and_matplotlib(
     pyproject: dict,
 ) -> None:
+    """The dev group is exactly pytest, ruff, and matplotlib.
+
+    Matplotlib is the dev mirror of the plot extra at exactly its
+    extra requirement, present so the complete development suite
+    exercises the renderer test path. scipy needs no dev mirror: it
+    is an unconditional core runtime dependency.
+    """
     groups = pyproject.get("dependency-groups", {})
     declared = {spec for spec in groups.get("dev", [])}
     assert declared == DEVELOPMENT_DEPENDENCIES, (
         "the dev dependency group must be exactly pytest, ruff, and "
-        "matplotlib (the bounded dev addition for headless Agg "
-        f"render tests) with their frozen bounds; found {sorted(declared)!r}"
+        "matplotlib — matplotlib is the dev mirror of the plot "
+        "extra's bounded addition for headless Agg render tests, not "
+        "an unconditional runtime dependency; scipy is core and needs "
+        "no dev mirror; found "
+        f"{sorted(declared)!r}"
     )
 
 
@@ -368,7 +385,7 @@ def test_import_triggers_no_eager_portlearn_submodules() -> None:
 def test_distribution_metadata_reports_identity_and_version() -> None:
     assert metadata.metadata(DISTRIBUTION_NAME)["Name"] == DISTRIBUTION_NAME
     assert metadata.version(DISTRIBUTION_NAME) == FROZEN_DEVELOPMENT_VERSION, (
-        "installed distribution metadata must report the frozen development "
+        "installed distribution metadata must report the fixed development "
         f"version {FROZEN_DEVELOPMENT_VERSION!r}"
     )
 
@@ -389,12 +406,12 @@ def test_dunder_version_is_derived_not_hard_coded() -> None:
 
     pyproject.toml is the single version authority. A hard-coded literal in
     ``src/portlearn/__init__.py`` — even one whose value currently equals
-    the frozen ``0.0.1.dev0`` — is an independent duplicate authority that
-    silently drifts on the first version bump. The frozen version must
+    the fixed ``0.0.1.dev0`` — is an independent duplicate authority that
+    silently drifts on the first version bump. The fixed version must
     therefore never appear as a literal anywhere in the module, and the
     ``__version__`` assignment must be a call expression deriving the value
     at import time from installed distribution metadata. The sole literal
-    permitted inside that call is the distribution name, the frozen lookup
+    permitted inside that call is the distribution name, the fixed lookup
     key — never a version.
     """
     init_path = REPOSITORY_ROOT / "src" / "portlearn" / "__init__.py"
@@ -409,7 +426,7 @@ def test_dunder_version_is_derived_not_hard_coded() -> None:
         and part.value == FROZEN_DEVELOPMENT_VERSION
     ]
     assert not frozen_literals, (
-        "the frozen development version must not be hard-coded in "
+        "the fixed development version must not be hard-coded in "
         "src/portlearn/__init__.py: pyproject.toml is the single version "
         "authority, so a literal duplicate drifts on the first version bump"
     )
@@ -444,7 +461,7 @@ def test_dunder_version_is_derived_not_hard_coded() -> None:
     ]
     assert not foreign_literals, (
         "the __version__ derivation may carry only the distribution name as "
-        "its literal (the frozen lookup key); found non-name literals "
+        "its literal (the fixed lookup key); found non-name literals "
         f"{foreign_literals!r}"
     )
 
@@ -461,12 +478,11 @@ def test_distribution_declares_unconditional_core_pandas() -> None:
     """The installed distribution carries pandas as an unconditional
     ``Requires-Dist`` entry.
 
-    The core dependency surface is exactly one unconditional pandas
-    requirement (no ``extra ==`` marker — a plain ``pip install
-    portlearn`` resolves it) plus the marker-guarded parquet-extra
-    pyarrow entry and nothing else. A pandas entry guarded by a marker,
-    or any second unconditional requirement, changes the installed
-    contract and fails here.
+    The core dependency surface is exactly two unconditional
+    requirements — pandas and SciPy — plus the marker-guarded
+    parquet-extra pyarrow entry and nothing else. A pandas or SciPy
+    entry guarded by a marker, or any third unconditional requirement,
+    changes the installed contract and fails here.
     """
     requires = list(metadata.requires(DISTRIBUTION_NAME) or [])
     pandas_entries = [
@@ -484,12 +500,13 @@ def test_distribution_declares_unconditional_core_pandas() -> None:
     unconditioned = [
         entry
         for entry in requires
-        if "extra ==" not in entry and _requirement_name(entry) != "pandas"
+        if "extra ==" not in entry
+        and _requirement_name(entry) not in ("pandas", "scipy")
     ]
     assert not unconditioned, (
-        "no unconditional requirement other than pandas may exist "
-        f"(only marker-guarded parquet-extra entries); found "
-        f"{unconditioned!r}"
+        "no unconditional requirement other than pandas and SciPy "
+        " may exist (only marker-guarded parquet-extra "
+        f"entries); found {unconditioned!r}"
     )
 
 
@@ -497,7 +514,7 @@ def test_undeclared_top_level_adapter_namespace_is_absent() -> None:
     """The undeclared top-level ``portlearn.adapters`` namespace is
     absent from the public package surface.
 
-    RED-first: importing ``portlearn.adapters`` (and its ``ff``/``fred``
+    test-first: importing ``portlearn.adapters`` (and its ``ff``/``fred``
     submodules) raises ``ModuleNotFoundError``. Provider adapters are
     introduced only under ``portlearn.data.adapters``; the top-level
     ``portlearn.adapters`` namespace is not part of the public package
@@ -577,8 +594,8 @@ def test_required_wheel_members_cover_the_complete_package_surface() -> None:
     silently missing any contract module (interfaces, leakage, manifest,
     observations, timing) pass verification. The required-member tuple
     must equal the complete source surface derived recursively (so future
-    subpackages join automatically), while the static frozen floor keeps
-    deletion of a frozen contract module detected even if the source tree
+    subpackages join automatically), while the static fixed floor keeps
+    deletion of a fixed contract module detected even if the source tree
     itself ever lost it.
     """
     module = _verification_module()
@@ -596,13 +613,13 @@ def test_required_wheel_members_cover_the_complete_package_surface() -> None:
         )
     } | {
         # The public diagnostics package marker joins the
-        # frozen floor; private per-block filenames are expressly NOT
-        # frozen (implementation detail) and join through the recursive
+        # fixed floor; private per-block filenames are expressly NOT
+        # fixed (implementation detail) and join through the recursive
         # derivation alone.
         f"{DISTRIBUTION_NAME}/data/diagnostics/__init__.py",
     }
     assert floor == frozen_floor, (
-        "REQUIRED_FLOOR_MEMBERS must be exactly the frozen contract floor "
+        "REQUIRED_FLOOR_MEMBERS must be exactly the fixed contract floor "
         f"{sorted(frozen_floor)}; found {sorted(floor)}"
     )
     required = set(module["REQUIRED_WHEEL_MEMBERS"])
@@ -618,7 +635,7 @@ def test_required_wheel_members_cover_the_complete_package_surface() -> None:
 def test_wheel_missing_a_contract_module_fails_verification(
     tmp_path: Path,
 ) -> None:
-    """A wheel that omits one contract module must fail closed.
+    """A wheel that omits one contract module must unconditional.
 
     A wheel carrying ``__init__.py`` and ``py.typed`` but no
     ``interfaces.py`` — the gap a two-file check cannot see — must make

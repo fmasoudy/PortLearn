@@ -97,7 +97,7 @@ def main() -> None:
     print(f"[4] lineage: {derived_feature.series_id} accepted (not available before its input)")
 
     # [5] Information-leakage battery: each synthetic leak attempt must be
-    # blocked by its frozen contract error.
+    # blocked by its fixed contract error.
     report = run_leakage_cases([
         LeakageCase(
             name="admit an observation not yet available at the decision",
@@ -129,7 +129,7 @@ def main() -> None:
     print(f"[6] manifest: {canonical}")
     print(f"    round-trips unchanged: {RunManifest.from_json(canonical) == manifest}")
     print("\nComposition complete: the foundation contracts compose, and the")
-    print("synthetic leak attempts were blocked by the frozen contracts.")
+    print("synthetic leak attempts were blocked by the fixed contract.")
 
 
 if __name__ == "__main__":

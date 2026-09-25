@@ -3,7 +3,7 @@
 This module defines the lifecycle laws around the
 ``Forecaster`` protocol — fitting, refitting, forecast timing,
 tuning, seeds, determinism, and provenance — as declared value
-objects and one-gate helpers beside that protocol, never inside it.
+objects and data-admission helpers beside that protocol, never inside it.
 It ships contracts only: no estimator, no wrapper, no model zoo, no
 registry, and no engine. A research repository implements a forecaster satisfying the ``Forecaster`` protocol and consumes these
 lifecycle objects.
@@ -17,7 +17,7 @@ Five laws govern the whole module:
   on this module's surface through which a second clock could be
   smuggled. Admission at that ``as_of`` has already excluded every
   record whose ``available_time`` follows it, so the law holds by
-  construction; the exported boundary gates re-assert it detectably
+  construction; the exported boundary checks re-assert it detectably
   so a hostile or wrapped estimator that keeps future-available
   records fails closed instead of warning.
 - **No second time vocabulary.** Every chronology or admission
@@ -44,7 +44,7 @@ Five laws govern the whole module:
 Configuration carried by a plan is deep-copied and canonicalized at
 construction into nested immutable containers (dict →
 ``MappingProxyType``, list/tuple → tuple, string keys only), so a
-caller can never mutate a plan's configuration through a nested
+caller can never modify a plan's configuration through a nested
 container after construction, and the configuration hash is a
 deterministic SHA-256 over the canonicalized value: key order and
 list/tuple distinction never affect it, while any value difference
@@ -53,7 +53,7 @@ does.
 The module imports stdlib only at module level plus ``portlearn``
 timing by qualified module import — aware-instant validation and those errors remain implemented solely in ``portlearn.timing``;
 nothing here re-implements or re-exports them. Importing this module
-performs no I/O and mutates nothing.
+performs no I/O and modifies nothing.
 """
 
 from __future__ import annotations
@@ -157,7 +157,7 @@ class FitWindow:
     the fitting method will consume — with no end field: the window's
     end is the fit information set's own ``as_of`` (the one-clock
     law), so a second end clock cannot exist either. Naive
-    timestamps and calendar dates reject fail-closed with ``NaiveTimestampError``; the stored instant is the exact object
+    timestamps and calendar dates are rejected with ``NaiveTimestampError``; the stored instant is the exact object
     supplied, never coerced or normalized.
     """
 
@@ -168,21 +168,21 @@ class FitWindow:
 
 
 def _require_model_identity(model: Any) -> str:
-    """Reject a blank or non-string model identity fail-closed."""
+    """Reject a blank or non-string model identity ."""
     if not isinstance(model, str):
         raise PlanStructureError(
             "a fitting plan's model must be an exact string identity "
             "naming the fitting method it declares; got "
             f"{type(model).__name__}: {model!r}. A non-string "
             "identity names no method, so the plan is rejected "
-            "fail-closed."
+            "unconditional."
         )
     if not model.strip():
         raise PlanStructureError(
             "a fitting plan's model must be a non-empty, non-blank "
             "string identity naming the fitting method it declares; "
             f"got {model!r}. A blank identity names no method, so "
-            "the plan is rejected fail-closed."
+            "the plan is rejected unconditionally."
         )
     return model
 
@@ -193,7 +193,7 @@ def _require_seed(seed: Any) -> int | None:
         raise PlanStructureError(
             "a fitting plan's seed must be an integer or declared "
             f"None; got {seed!r} of type bool. A boolean is not a "
-            "seed, so the plan is rejected fail-closed."
+            "seed, so the plan is rejected unconditionally."
         )
     if seed is None or isinstance(seed, int):
         return seed
@@ -201,7 +201,7 @@ def _require_seed(seed: Any) -> int | None:
         "a fitting plan's seed must be an integer or declared None; "
         f"got {type(seed).__name__}: {seed!r}. Any other seed type "
         "carries no declared reproducibility meaning, so the plan "
-        "is rejected fail-closed."
+        "is rejected unconditionally."
     )
 
 
@@ -230,7 +230,7 @@ def _canonicalize_config(value: Any, path: str) -> Any:
                     f"string names to values; got key {key!r} at "
                     f"{path}. Configuration is declared data with "
                     "named fields, so a non-string or blank key names "
-                    "no setting and the plan is rejected fail-closed."
+                    "no setting and the plan is rejected unconditionally."
                 )
             canonical[key] = _canonicalize_config(item, f"{path}[{key!r}]")
         return MappingProxyType(canonical)
@@ -243,7 +243,7 @@ def _canonicalize_config(value: Any, path: str) -> Any:
         "a fitting plan's configuration must contain only scalar, "
         f"mapping, and sequence values; got {type(value).__name__} at "
         f"{path}: {value!r}. Configuration is declared data, not an "
-        "execution surface, so the plan is rejected fail-closed."
+        "execution surface, so the plan is rejected unconditionally."
     )
 
 
@@ -287,7 +287,7 @@ class FittingPlan:
     A ``FittingPlan`` declares what will be fitted, and nothing
     else: the model identity (an exact string), the configuration
     (deep-copied and canonicalized into nested immutable containers
-    at construction — a caller can never mutate it afterwards, not
+    at construction — a caller can never modify it afterwards, not
     even through a nested container that was passed in), the random
     seed or its declared absence, the fit window (a ``FitWindow``
     value object), and exactly one determinism class.
@@ -296,7 +296,7 @@ class FittingPlan:
     added: the cutoff of any fit under this plan is the ``as_of`` of
     the ``InformationSet`` that fit consumes — one clock, recorded
     in provenance by ``fitting_provenance``, and re-asserted by the
-    exported boundary gates. A cutoff-bearing construction is not
+    exported boundary checks. A cutoff-bearing construction is not
     representable: unexpected keyword arguments reject with
     ``TypeError``.
 
@@ -323,7 +323,7 @@ class FittingPlan:
                 "a fitting plan's configuration must be a mapping from "
                 f"names to values; got {type(self.config).__name__}: "
                 f"{self.config!r}. Configuration is declared data, so "
-                "the plan is rejected fail-closed."
+                "the plan is rejected unconditionally."
             )
         seed = _require_seed(self.seed)
         if not isinstance(self.fit_window, FitWindow):
@@ -332,7 +332,7 @@ class FittingPlan:
                 f"object; got {type(self.fit_window).__name__}: "
                 f"{self.fit_window!r}. The window is declared data, "
                 "never a bare instant, so the plan is rejected "
-                "fail-closed."
+                "unconditional."
             )
         if not isinstance(self.determinism, DeterminismClass):
             raise PlanStructureError(
@@ -342,7 +342,7 @@ class FittingPlan:
                 f"{type(self.determinism).__name__}: "
                 f"{self.determinism!r}. The class is a declared fact, "
                 "never a string or an inference, so the plan is "
-                "rejected fail-closed."
+                "rejected unconditionally."
             )
         explanation = self.nondeterminism_explanation
         if self.determinism is DeterminismClass.NONDETERMINISTIC:
@@ -370,7 +370,7 @@ class FittingPlan:
                 "a SEED_REPRODUCIBLE fitting plan requires a declared "
                 "integer seed; got None. Reproducibility that depends "
                 "on a seed cannot be declared without one, so the plan "
-                "is rejected fail-closed."
+                "is rejected unconditionally."
             )
         object.__setattr__(self, "model", model)
         object.__setattr__(self, "config", canonical)
@@ -527,7 +527,7 @@ class ForecasterFactory(Protocol):
 
 
 # --------------------------------------------------------------------------- #
-# Boundary gates and provenance helpers
+# Boundary checks and provenance helpers
 # --------------------------------------------------------------------------- #
 
 
@@ -540,7 +540,7 @@ def _fit_set_as_of(fit_set: Any) -> datetime:
             "instant; got "
             f"{type(fit_set).__name__}: {fit_set!r}. The cutoff of a "
             "fit is exactly that instant (one clock), so a fit set "
-            "without one cannot be gated."
+            "without one cannot be checked."
         )
     return _timing.to_instant(as_of, "the fit set's as_of")
 
@@ -548,7 +548,7 @@ def _fit_set_as_of(fit_set: Any) -> datetime:
 def require_fit_inputs_admitted(records: Iterable[Any], fit_set: Any) -> None:
     """Re-assert admission for every record fitting consumes.
 
-    The fitting boundary gate: each record's ``available_time`` must
+    The fitting boundary rule: each record's ``available_time`` must
     be at or before the fit set's own ``as_of``. Any record whose
     availability follows that instant rejects with ``FutureInformationError`` — fitting that cannot honor the
     fit-set cutoff fails closed, never warns — and a malformed
@@ -561,8 +561,8 @@ def require_fit_inputs_admitted(records: Iterable[Any], fit_set: Any) -> None:
         raise PlanStructureError(
             "the records consumed by fitting must be an iterable of "
             f"admitted observations; got {type(records).__name__}: "
-            f"{records!r}. Fitting gates what it can enumerate, so a "
-            "non-iterable input is rejected fail-closed."
+            f"{records!r}. Fitting checks what it can enumerate, so a "
+            "non-iterable input is rejected unconditionally."
         )
     cutoff = _fit_set_as_of(fit_set)
     for record in records:
@@ -571,7 +571,7 @@ def require_fit_inputs_admitted(records: Iterable[Any], fit_set: Any) -> None:
             raise PlanStructureError(
                 "a record consumed by fitting must expose its "
                 f"available_time; got {type(record).__name__}: "
-                f"{record!r}. The fitting boundary cannot gate a "
+                f"{record!r}. The fitting boundary cannot check a "
                 "record that declares no availability."
             )
         available_instant = _timing.to_instant(
@@ -594,7 +594,7 @@ def require_fit_inputs_admitted(records: Iterable[Any], fit_set: Any) -> None:
 def require_cutoff_from_fit_set(asserted: Any, fit_set: Any) -> None:
     """Reject any cutoff assertion that diverges from the fit set's.
 
-    The one-clock consistency gate: an instant asserted as the
+    The one-clock consistency rule: an instant asserted as the
     training cutoff anywhere in the lifecycle must be exactly the
     fit set's own ``as_of`` — later or earlier both reject with
     ``ProvenanceStructureError``, a naive assertion rejects with ``NaiveTimestampError``, and a fit set with no ``as_of``
@@ -611,14 +611,14 @@ def require_cutoff_from_fit_set(asserted: Any, fit_set: Any) -> None:
             "is exactly the fit information set's own as_of="
             f"{actual.isoformat()}. There is no second clock — any "
             "divergent assertion (the wrapped library's internal "
-            "bookkeeping included) is rejected fail-closed."
+            "bookkeeping included) is rejected unconditionally."
         )
 
 
 def require_selection_labels_available(
     labels: Iterable[Any], selection_origin: Any
 ) -> None:
-    """Gate hyperparameter-selection labels at the selection origin.
+    """Require hyperparameter-selection labels at the selection origin.
 
     The tuning-timing law: every label a selection scores on must be
     realizable at the selection origin — its ``available_time`` at
@@ -632,8 +632,8 @@ def require_selection_labels_available(
         raise PlanStructureError(
             "the labels consumed by a selection must be an iterable of "
             f"observations; got {type(labels).__name__}: {labels!r}. "
-            "The selection boundary gates what it can enumerate, so a "
-            "non-iterable input is rejected fail-closed."
+            "The selection boundary checks what it can enumerate, so a "
+            "non-iterable input is rejected unconditionally."
         )
     origin = _timing.to_instant(selection_origin, "the selection origin")
     for label in labels:
@@ -642,7 +642,7 @@ def require_selection_labels_available(
             raise PlanStructureError(
                 "a selection label must expose its available_time; got "
                 f"{type(label).__name__}: {label!r}. The selection "
-                "boundary cannot gate a label that declares no "
+                "boundary cannot check a label that declares no "
                 "availability."
             )
         available_instant = _timing.to_instant(
@@ -657,7 +657,7 @@ def require_selection_labels_available(
                 f"{available_instant.isoformat()} is after the "
                 f"selection origin {origin.isoformat()}. Tuning that "
                 "scores configurations on labels not yet available is "
-                "the walk-forward leak, and it is rejected fail-closed."
+                "the walk-forward leak, and it is rejected unconditionally."
             )
 
 
@@ -764,5 +764,5 @@ def require_reproducible(forecasts: Any) -> None:
                 "under one declared determinism class diverge — the "
                 "results differ in values, target, decision_time, or "
                 "produced-by provenance. A declared class the evidence "
-                "contradicts is rejected fail-closed."
+                "contradicts is rejected unconditionally."
             )

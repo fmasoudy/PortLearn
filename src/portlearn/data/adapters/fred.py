@@ -22,7 +22,7 @@ assumed historical availability timestamp and cannot support point-in-time
 claims.  A declared per-series lag may be recorded as **non-binding
 research metadata** (an assumption about release practice) but can never
 move ``available_time`` earlier than the retrieval instant.  A declared
-``POINT_IN_TIME`` mode rejects fail-closed: no source-supplied vintage
+``POINT_IN_TIME`` mode is rejected: no source-supplied vintage
 evidence path exists, and none may be improvised.
 
 Decoded series are research inputs and are **not investable**; nothing in
@@ -34,7 +34,7 @@ fetch-time argument only: it is sent to the provider, never recorded in
 any provenance field, any URL, or any fixture — the provenance value
 object structurally refuses key-bearing material.  True-vintage retrieval
 parameters (``vintage_dates``; non-default ``output_type``) reject
-fail-closed: this adapter implements no vintage path.  The decoder is
+strict: this adapter implements no vintage path.  The decoder is
 network-independent and pure: identical bytes decode to identical
 records.  All committed fixtures are clearly labeled SYNTHETIC
 provider-format replicas (see the fixture MANIFEST) containing invented
@@ -103,7 +103,7 @@ DATASET_MODES = (CURRENT_SNAPSHOT, POINT_IN_TIME)
 _BASE_URL = "https://api.stlouisfed.org/fred/series/observations"
 
 #: The period frequencies this adapter maps through the shared substrate; any
-#: other provider frequency (Weekly, Annual, ...) is outside the supported period-mapping set and rejects fail-closed.
+#: other provider frequency (Weekly, Annual, ...) is outside the supported period-mapping set and rejects unconditionally.
 SUPPORTED_FREQUENCIES = ("Monthly", "Quarterly", "Daily")
 
 _LICENCE_NOTE = (
@@ -143,7 +143,7 @@ _BOUNDED_EXPLICIT_COLUMN = ingestion.AvailabilityPolicy.explicit_column(
 
 
 class ProviderResponseError(ValueError):
-    """The provider response is unusable (shape, JSON, HTTP) — fail-closed."""
+    """The provider response is unusable (shape, JSON, HTTP) — strict."""
 
 
 class UnknownSeriesError(ProviderResponseError):
@@ -183,7 +183,7 @@ class FREDProvenance(ingestion.SourceProvenance):
     the provider-layer retrieval facts: the sanitized
     request URL (never containing the API key), the realtime window, the
     attribution line, the closed ``data_mode``, the sanitized request
-    parameters, and the declared-lag note.  The ``SourceProvenance`` shape is never mutated — extension is by
+    parameters, and the declared-lag note.  The ``SourceProvenance`` shape is never modify — extension is by
     subclass, never by editing the ingestion module.
     """
 
@@ -208,13 +208,13 @@ class FREDProvenance(ingestion.SourceProvenance):
             raise ValueError(
                 "api_key may never ride provenance: request_params carries "
                 "key material, but the API key is fetch-time only and any "
-                "record of it is a disclosure, fail-closed."
+                "record of it is a disclosure, and reject."
             )
         if "api_key=" in self.url:
             raise ValueError(
                 "api_key may never ride provenance: the url carries key "
                 "material, but the API key is fetch-time only and any "
-                "record of it is a disclosure, fail-closed."
+                "record of it is a disclosure, and reject."
             )
 
 
@@ -229,7 +229,7 @@ class FREDRetrievalProvenance(RetrievalProvenance):
     deliberately **no** ``availability`` field and this record is
     deliberately *not* a
     :class:`~portlearn.data.ingestion.SourceProvenance`: a retrieval-only
-    load can never satisfy the qualified provenance contract.  Frozen
+    load can never satisfy the qualified provenance contract.  Immutable
     and hashable end-to-end: ``request_params`` is a canonical
     immutable tuple of key-sorted string pairs (never a dict, never
     key-bearing), which is exactly what the qualified decoder's
@@ -271,19 +271,19 @@ class FREDRetrievalProvenance(RetrievalProvenance):
             raise ValueError(
                 "api_key may never ride provenance: request_params carries "
                 "key material, but the API key is fetch-time only and any "
-                "record of it is a disclosure, fail-closed."
+                "record of it is a disclosure, and reject."
             )
         if "api_key=" in self.url:
             raise ValueError(
                 "api_key may never ride provenance: the url carries key "
                 "material, but the API key is fetch-time only and any "
-                "record of it is a disclosure, fail-closed."
+                "record of it is a disclosure, and reject."
             )
         object.__setattr__(self, "request_params", canonical)
 
 
 # --------------------------------------------------------------------------- #
-# Admission (fail-closed, no defaults)
+# Admission (unconditional, no defaults)
 # --------------------------------------------------------------------------- #
 
 
@@ -313,8 +313,8 @@ def _require_frequency(frequency: Any) -> str:
         raise UnsupportedFrequencyError(
             f"frequency {frequency!r} is outside the closed period-"
             f"mapping set {SUPPORTED_FREQUENCIES!r}; Weekly/Annual and "
-            "other provider frequencies reject fail-closed — they have "
-            "no frozen period-instant mapping."
+            "other provider frequencies reject unconditionally — they have "
+            "no fixed period-instant mapping."
         )
     return frequency
 
@@ -339,12 +339,12 @@ def _parse_payload(data: bytes) -> dict[str, Any]:
     except (UnicodeDecodeError, json.JSONDecodeError) as exc:
         raise ProviderResponseError(
             f"provider bytes are not a JSON document ({exc}); the decoder "
-            "rejects unparseable provider bytes fail-closed."
+            "rejects unparseable provider bytes unconditional."
         ) from None
     if not isinstance(payload, dict):
         raise ProviderResponseError(
             "the provider JSON document is not an object; the decoder "
-            "rejects unrecognized provider bytes fail-closed."
+            "rejects unrecognized provider bytes unconditional."
         )
     return payload
 
@@ -357,7 +357,7 @@ def _require_observation_payload(
         message = error.get("message", "")
         raise UnknownSeriesError(
             f"the provider returned an error payload for {series_id!r}: "
-            f"{message} The request rejects fail-closed."
+            f"{message} The request rejects unconditionally."
         )
     for window_key in ("realtime_start", "realtime_end"):
         if not isinstance(payload.get(window_key), str):
@@ -371,13 +371,13 @@ def _require_observation_payload(
         raise ProviderResponseError(
             f"the payload series_id {payload_series!r} does not match the "
             f"requested series {series_id!r}; a mismatched series rejects "
-            "fail-closed."
+            "unconditional."
         )
     observations = payload.get("observations")
     if not isinstance(observations, list) or not observations:
         raise ProviderResponseError(
             "the provider payload carries no observations list; the "
-            "provider format is not recognized, fail-closed."
+            "provider format is not recognized, and reject."
         )
     return observations
 
@@ -409,7 +409,7 @@ def _require_date_key(date_key: Any) -> str:
     ):
         raise ProviderResponseError(
             f"observation date {date_key!r} is not a provider YYYY-MM-DD "
-            "date key; the decoder rejects it fail-closed."
+            "date key; the decoder rejects it unconditional."
         )
     return date_key
 
@@ -434,7 +434,7 @@ def _period_instant(date_key: str, frequency: str, tzinfo: Any) -> datetime:
         raise ValueError(
             f"{frequency} observation date {date_key!r} is not a period "
             "start (day 01); a mid-period date names no whole period and "
-            "rejects fail-closed."
+            "rejects unconditionally."
         )
     if frequency == "Monthly":
         if not 1 <= month <= 12:
@@ -446,7 +446,7 @@ def _period_instant(date_key: str, frequency: str, tzinfo: Any) -> datetime:
         raise ValueError(
             f"Quarterly observation date {date_key!r} is not a period "
             "start (month 01/04/07/10); a mid-quarter date names no "
-            "whole quarter and rejects fail-closed."
+            "whole quarter and rejects unconditionally."
         )
     return quarter_end_instant(year, (month - 1) // 3 + 1, tzinfo)
 
@@ -459,7 +459,7 @@ def _parse_value(cell: Any) -> float:
         raise ProviderResponseError(
             f"provider value cell {cell!r} is neither a numeric "
             "observation nor the missing-data marker; the decoder "
-            "rejects unparseable provider bytes fail-closed."
+            "rejects unparseable provider bytes unconditional."
         ) from None
 
 
@@ -521,14 +521,14 @@ def _require_params(params: Any) -> dict[str, str]:
             raise ValueError(
                 "vintage_dates is a true-vintage retrieval parameter: "
                 "this adapter implements no vintage path (the POINT_IN_TIME "
-                "boundary), so vintage retrieval rejects fail-closed."
+                "boundary), so vintage retrieval rejects unconditionally."
             )
         if key == "output_type" and str(value) != "1":
             raise ValueError(
                 f"output_type={value!r} selects a vintage/realtime output "
                 "shape: this adapter implements no vintage path (the "
                 "POINT_IN_TIME boundary), so non-default output types "
-                "reject fail-closed."
+                "reject unconditionally."
             )
     return {str(key): str(value) for key, value in params.items()}
 
@@ -571,12 +571,12 @@ def _request_observations(
     except HTTPError as exc:
         raise ProviderResponseError(
             f"provider HTTP {exc.code} failure for series {series_id!r} "
-            f"({exc.reason}); the fetch rejects fail-closed."
+            f"({exc.reason}); the fetch rejects unconditionally."
         ) from None
     except URLError as exc:
         raise ProviderResponseError(
             f"provider transport failure for series {series_id!r} "
-            f"({exc.reason}); the fetch rejects fail-closed."
+            f"({exc.reason}); the fetch rejects unconditionally."
         ) from None
     return data, query, f"{_BASE_URL}?{sanitized}"
 
@@ -595,7 +595,7 @@ def fetch(
     validated before any socket is opened, sent to the provider, and
     never recorded: the returned provenance carries a sanitized URL and
     sanitized request parameters only.  True-vintage parameters reject
-    fail-closed.  The retrieval is labeled ``CURRENT_SNAPSHOT``.
+    strict.  The retrieval is labeled ``CURRENT_SNAPSHOT``.
     """
     data, query, sanitized_url = _request_observations(
         series_id, api_key, params
@@ -698,7 +698,7 @@ def decode(
     ``retrieval`` provenance's instant when supplied, else the last
     instant of the payload's realtime-end day in the declared zone), and
     a declared fixed lag rides solely as non-binding research metadata
-    release practice.  ``POINT_IN_TIME`` rejects fail-closed.  When
+    release practice.  ``POINT_IN_TIME`` is rejected.  When
     ``retrieval`` provenance from :func:`fetch` is supplied, its content
     hash must match ``data`` exactly and its data mode must agree.
     """
@@ -731,7 +731,7 @@ def decode(
             "realtime/vintage evidence (realtime_start/realtime_end/"
             "vintage_dates or an equivalent source mechanism), and this adapter "
             "implements no such evidence path; the data mode rejects "
-            "fail-closed (an unsupported operation for this provider)."
+            "unconditional (an unsupported operation for this provider)."
         )
     payload = _parse_payload(data)
     observations = _require_observation_payload(payload, series_id)
@@ -743,7 +743,7 @@ def decode(
             raise ProviderResponseError(
                 f"the metadata series id {metadata_id!r} does not match "
                 f"the requested series {series_id!r}; mismatched "
-                "metadata rejects fail-closed."
+                "metadata rejects unconditionally."
             )
         metadata_units = metadata.get("units")
         if isinstance(metadata_units, str) and metadata_units.strip():
@@ -755,7 +755,7 @@ def decode(
                 raise ValueError(
                     f"declared frequency {declared_frequency!r} disagrees "
                     f"with the metadata frequency {metadata_frequency!r}; "
-                    "a contradicting declaration rejects fail-closed."
+                    "a contradicting declaration rejects unconditionally."
                 )
     if retrieval is not None:
         lower_bound: datetime = to_instant(
@@ -773,7 +773,7 @@ def decode(
         if not isinstance(observation, dict):
             raise ProviderResponseError(
                 f"observation entry {observation!r} is not an object; the "
-                "provider format is not recognized, fail-closed."
+                "provider format is not recognized, and reject."
             )
         cell = observation.get("value")
         if cell is None or cell == _MISSING_MARKER:
@@ -909,7 +909,7 @@ def decode_unqualified(
             raise ProviderResponseError(
                 f"the metadata series id {metadata_id!r} does not match "
                 f"the requested series {series_id!r}; mismatched "
-                "metadata rejects fail-closed."
+                "metadata rejects unconditionally."
             )
         metadata_units = metadata.get("units")
         if isinstance(metadata_units, str) and metadata_units.strip():
@@ -924,7 +924,7 @@ def decode_unqualified(
                 raise ValueError(
                     f"declared frequency {declared_frequency!r} disagrees "
                     f"with the metadata frequency {metadata_frequency!r}; "
-                    "a contradicting declaration rejects fail-closed."
+                    "a contradicting declaration rejects unconditionally."
                 )
             declared_frequency = checked
     records: list[PeriodKeyObservation] = []
@@ -932,7 +932,7 @@ def decode_unqualified(
         if not isinstance(observation, dict):
             raise ProviderResponseError(
                 f"observation entry {observation!r} is not an object; the "
-                "provider format is not recognized, fail-closed."
+                "provider format is not recognized, and reject."
             )
         cell = observation.get("value")
         if cell is None or cell == _MISSING_MARKER:

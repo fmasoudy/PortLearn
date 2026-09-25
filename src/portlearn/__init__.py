@@ -2,7 +2,7 @@
 
 This package ships its public identity only: importing this module is
 side-effect-free — it performs no filesystem writes, network access,
-configuration mutation, logging initialization, data retrieval, or
+configuration changes, logging initialization, data retrieval, or
 application computation — and it eagerly imports no other PortLearn
 module, so the import surface stays minimal and stable.
 
@@ -51,11 +51,15 @@ def __getattr__(name: str) -> Any:
         from importlib import import_module
 
         return import_module("portlearn.ledger")
+    if name == "strategies":
+        from importlib import import_module
+
+        return import_module("portlearn.strategies")
     raise AttributeError(
         f"module {__name__!r} has no attribute {name!r}; the lazily "
         "exposed public subpackage is 'data'; the public modules are "
-        "'weights', 'rebalance', 'trades', 'turnover', 'costs', and "
-        "'ledger'."
+        "'weights', 'rebalance', 'trades', 'turnover', 'costs', "
+        "'ledger', and 'strategies'."
     )
 
 

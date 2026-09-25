@@ -160,7 +160,7 @@ def correlation(
             raise ValueError(
                 f"duplicate (series_id, exact key) cell ({local!r}, {key!r}) "
                 "within one series: duplicates are never averaged into an "
-                "estimand; the dataset rejects fail-closed"
+                "estimand; the dataset rejects unconditionally"
             )
         cells[key] = record.value
 

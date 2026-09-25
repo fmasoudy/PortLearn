@@ -10,7 +10,7 @@ This module defines the information semantics:
 - **Identity law** — an observation's identity is the triple
   ``(series_id, observation_time, available_time)``.  A revision is a
   separate record with the same ``series_id`` and ``observation_time``
-  and a later ``available_time``; revisions are never mutations.
+  and a later ``available_time``; revisions are never in-place changes.
   ``series_id`` is an opaque, non-empty, non-blank string compared by
   exact string equality — no case folding, whitespace stripping, or
   Unicode normalization of any kind.
@@ -19,7 +19,7 @@ This module defines the information semantics:
   at or before the decision; a revised value is invisible before its
   own availability.  ``vintage_as_of`` accepts exactly one
   ``(series_id, observation_time)`` group and rejects duplicate
-  full-identity records and mixed-group input fail-closed.
+  full-identity records and mixed-group input strict.
 - **Feature lineage law** — a derived feature may not be declared
   available before its latest input: ``feature available_time ≥
   max(input available_times)``, and an empty input collection has no
@@ -57,7 +57,7 @@ __all__ = [
 
 
 # --------------------------------------------------------------------------- #
-# Fail-closed error taxonomy — the observations-owned arm
+# Rejection taxonomy — the observations-owned arm
 # --------------------------------------------------------------------------- #
 
 
@@ -78,7 +78,7 @@ class FeatureLineageError(Exception):
 
     A derived feature may not be declared available before its latest
     input's availability, and a feature with an empty input collection
-    has no defensible availability at all: both fail closed rather than
+    has no defensible availability at all: both unconditional rather than
     warn, because a feature visible before the data it derives from is
     look-ahead leakage.
     """
@@ -110,9 +110,9 @@ class TimedObservation:
     known (publication is one source of availability); ``value`` is the
     observed figure.  The identity of the record is the triple
     ``(series_id, observation_time, available_time)``: a revision is a
-    separate record with a later ``available_time``, never a mutation.
+    separate record with a later ``available_time``, never an in-place change.
 
-    Construction is fail-closed: ``series_id`` must be a non-empty,
+    Construction validates strictly: ``series_id`` must be a non-empty,
     non-blank string (validated with the built-in ``ValueError`` because
     a blank identifier names no series); both instants must be aware;
     ``available_time`` may not be absent, ``None``, or precede the
@@ -135,14 +135,14 @@ class TimedObservation:
                 "the observation belongs to; got "
                 f"{type(self.series_id).__name__}: {self.series_id!r}. "
                 "A non-string identifier names no series, so the "
-                "observation is rejected fail-closed."
+                "observation is rejected unconditionally."
             )
         if not self.series_id.strip():
             raise ValueError(
                 "series_id must be a non-empty, non-blank string identifier "
                 f"naming the series the observation belongs to; got "
                 f"{self.series_id!r}. A blank identifier names no series, "
-                "so the observation is rejected fail-closed."
+                "so the observation is rejected unconditionally."
             )
         observation = to_instant(
             self.observation_time, "observation_time"
@@ -181,7 +181,7 @@ def vintage_as_of(
     before ``decision_time`` — availability exactly at the decision is
     visible.  A revised value is invisible before its own availability.
 
-    Evaluation is fail-closed in this order: ``decision_time`` is
+    Evaluation validates strictly in this order: ``decision_time`` is
     validated as an aware instant before
     any branching; empty input returns ``None`` (no vintage, explicitly
     not an error); input spanning more than one group rejects with

@@ -18,7 +18,7 @@ earlier fold=0 instant — exactly the no-look-ahead violation this
 battery reproduces.
 
 The battery below walks that one fold through every semantic surface:
-the admission law (pure query and gate), vintage visibility and
+the admission law (pure query and check), vintage visibility and
 selection, observation identity keys, the decision→execution→
 realization chronology, feature-lineage ordering, and the
 normalization helpers themselves (``to_instant`` / ``instant_key``).
@@ -90,7 +90,7 @@ def test_fold_later_instant_is_not_available_at_earlier_fold_decision() -> None:
 
 
 def test_fold_later_instant_rejects_at_the_admission_gate() -> None:
-    """Regression: the admission gate raises ``FutureInformationError``
+    """Regression: the admission check raises ``FutureInformationError``
     for an item whose availability is the later fold instant when the
     decision is the earlier fold instant."""
     item = SimpleNamespace(available_time=FOLD_SECOND)

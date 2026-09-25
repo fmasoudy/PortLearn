@@ -13,7 +13,7 @@ every forbidden mixed state unrepresentable at the public constructors:
 an UNQUALIFIED dataset carries ``availability is None`` and
 ``qualified_provenance is None`` by construction, a QUALIFIED dataset
 carries both populated by construction, and the canonical constructors
-validate every cross-field invariant fail-closed (there is no
+validate every cross-field invariant strict (there is no
 privileged internal construction path; the facades build datasets
 through exactly these constructors).
 
@@ -131,7 +131,7 @@ def _require_non_blank_str(value: Any, label: str) -> str:
         raise ValueError(
             f"{label} must be a non-empty, non-blank string; got "
             f"{value!r}. A blank identifier names nothing, so the "
-            "dataset rejects fail-closed."
+            "dataset rejects unconditionally."
         )
     return value
 
@@ -161,7 +161,7 @@ class ResearchDataset:
     """One provider dataset in exactly one of the two sealed states.
 
     Read-only surfaces: every public attribute is a property without a
-    setter, so mutation is impossible in both states
+    setter, so modification is impossible in both states
     — including through the low-level assignment bypass, which hits the
     property descriptor and fails.  ``units``, ``frequency``, and (where
     the active typed provenance declares one) ``data_mode`` delegate to
@@ -206,7 +206,7 @@ class ResearchDataset:
         qualified_provenance: Any = None,
         decoder: Callable[..., Any] | None = None,
     ) -> None:
-        """Validate every cross-field invariant fail-closed, or reject."""
+        """Validate every cross-field invariant strict, or reject."""
         if type(self) is ResearchDataset:
             raise TypeError(
                 "ResearchDataset is the sealed two-state container; "
@@ -261,7 +261,7 @@ class ResearchDataset:
             raise ValueError(
                 "retrieval_provenance carries an availability field — a "
                 "retrieval-only record must never satisfy the qualified "
-                "provenance contract, fail-closed."
+                "provenance contract, and reject."
             )
         for fact in ("content_sha256", "units", "frequency"):
             if not hasattr(retrieval_provenance, fact):
@@ -275,7 +275,7 @@ class ResearchDataset:
                 "bytes are not the bytes the retrieval recorded "
                 f"({retrieval_provenance.content_sha256!r} pinned, "
                 f"{self._source_sha256!r} retained); the dataset rejects "
-                "fail-closed."
+                "unconditional."
             )
         self._retrieval_provenance = retrieval_provenance
         if availability_state == UNQUALIFIED:
@@ -283,18 +283,18 @@ class ResearchDataset:
                 raise ValueError(
                     "an UNQUALIFIED dataset carries no availability: the "
                     "state is sealed, availability enters only through "
-                    "qualify(...), fail-closed."
+                    "qualify(...), and reject."
                 )
             if qualified_provenance is not None:
                 raise ValueError(
                     "an UNQUALIFIED dataset carries no qualified "
-                    "provenance: the state is sealed, fail-closed."
+                    "provenance: the state is sealed, and reject."
                 )
             if not isinstance(decoder, Callable):
                 raise TypeError(
                     "an UNQUALIFIED dataset requires the injected provider "
                     "decoder callable so qualify(...) "
-                    "routes through the frozen qualified decoder."
+                    "routes through the fixed qualified decoder."
                 )
             self._availability = None
             self._qualified_provenance = None
@@ -304,24 +304,24 @@ class ResearchDataset:
                 raise ValueError(
                     "a QUALIFIED dataset carries the caller-supplied "
                     "availability policy; a policy-less qualified state "
-                    "is unrepresentable, fail-closed."
+                    "is unrepresentable, and reject."
                 )
             if qualified_provenance is None:
                 raise ValueError(
                     "a QUALIFIED dataset carries its typed qualified "
-                    "provenance; the state is sealed, fail-closed."
+                    "provenance; the state is sealed, and reject."
                 )
             if not hasattr(qualified_provenance, "availability"):
                 raise ValueError(
                     "qualified_provenance must satisfy the qualified "
                     "provenance contract (it carries the availability "
-                    "declaration), fail-closed."
+                    "declaration), and reject."
                 )
             if qualified_provenance.availability != availability:
                 raise ValueError(
                     "the qualified provenance availability declaration "
                     "disagrees with the dataset availability policy — the "
-                    "two must be the same declaration, fail-closed."
+                    "two must be the same declaration, and reject."
                 )
             if (
                 qualified_provenance.content_sha256
@@ -329,12 +329,12 @@ class ResearchDataset:
             ):
                 raise ValueError(
                     "qualified provenance hash pin mismatch: the decode "
-                    "was not over the retained bytes, fail-closed."
+                    "was not over the retained bytes, and reject."
                 )
             if decoder is not None:
                 raise TypeError(
                     "a QUALIFIED dataset carries no decoder: "
-                    "qualification is one-way, fail-closed."
+                    "qualification is one-way, and reject."
                 )
             self._availability = availability
             self._qualified_provenance = qualified_provenance
@@ -369,7 +369,7 @@ class ResearchDataset:
                         "an UNQUALIFIED dataset holds period-key records "
                         "only; a non-period-key record "
                         f"({type(record).__name__}) is unrepresentable, "
-                        "fail-closed."
+                        "unconditional."
                     )
         else:
             for record in self._records:
@@ -378,7 +378,7 @@ class ResearchDataset:
                         "a QUALIFIED dataset holds timed observation "
                         "records only; a record without decision-time "
                         f"facts ({type(record).__name__}) is "
-                        "unrepresentable, fail-closed."
+                        "unrepresentable, and reject."
                     )
 
     # -- read-only surfaces (properties without setters; mutation is
@@ -647,7 +647,7 @@ class UnqualifiedDataset(ResearchDataset):
         """Qualify with the indivisible evidence pair, or refuse.
 
         ``availability`` and ``tzinfo`` are an indivisible pair: both or
-        neither, one-sided or empty refusal is fail-closed, and no
+        neither, one-sided or empty refusal is strict, and no
         default :class:`~portlearn.data.ingestion.AvailabilityPolicy` and no
         default zone is ever supplied.  The re-decode runs
         through the injected provider decoder over the retained
@@ -659,7 +659,7 @@ class UnqualifiedDataset(ResearchDataset):
                 "qualification takes the indivisible evidence pair: pass "
                 "BOTH availability= (an explicit AvailabilityPolicy "
                 "declaration) and tzinfo= (an aware zone) together. "
-                "One-sided or empty qualification is refused fail-closed "
+                "One-sided or empty qualification is refused unconditionally "
                 "— no default AvailabilityPolicy and no default zone is "
                 "ever supplied, because each alone smuggles a silent "
                 "decision-time assumption."
@@ -739,7 +739,7 @@ class QualifiedDataset(ResearchDataset):
         )
 
     def to_information_set(self, as_of: Any = None) -> InformationSet:
-        """Admit the qualified records at ``as_of``, fail-closed.
+        """Admit the qualified records at ``as_of``, strict.
 
         The bridge is the :class:`~portlearn.interfaces.InformationSet` admission rule itself: every record's timing
         (``available_time``) and lineage (the decoder's declared table

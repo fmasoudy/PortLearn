@@ -3,14 +3,14 @@
 These tests freeze the documented timing semantics: timezone-aware
 instants only (no naive datetimes, no date-to-midnight coercion), the
 five-time chronology law with equal-adjacent boundaries admissible, the
-inclusive decision-time-only admission law, and the typed fail-closed
+inclusive decision-time-only admission law, and the typed unconditional
 error taxonomy owned by ``portlearn.timing``.  Sections below cover the
 valid-admission matrix (boundary cases, cross-zone instants, selected
 vintages, and determinism) and the rejection matrix (malformed instants,
 chronology violations, and missing availability).
 
 Malformed-item fixtures built from ``types.SimpleNamespace`` appear only
-where fail-closed field validation of ``available_time`` on the
+where unconditional field validation of ``available_time`` on the
 admission pair must be exercised (attribute absence, ``None``, naive
 datetime, ``datetime.date``).  Real ``TimedObservation`` instances
 cannot represent those malformed states because their own constructor
@@ -440,7 +440,7 @@ def test_future_information_is_a_typed_rejection() -> None:
 
 
 def test_decision_execution_gap_information_is_still_rejected() -> None:
-    """The gate is decision_time only.
+    """The check is decision_time only.
 
     Information arriving inside the decision-to-execution gap satisfies
     ``available_time <= execution_time`` yet must still be rejected: no
@@ -550,7 +550,7 @@ def test_missing_availability_rejects_fail_closed() -> None:
 
 
 def test_reversed_chronology_is_rejected_at_each_value_object() -> None:
-    """Construction itself is fail-closed on every value object."""
+    """Construction itself rejects on every value object."""
     with pytest.raises(InvalidChronologyError):
         close_item(
             observation_time=B_AVAILABLE, available_time=B_OBSERVATION

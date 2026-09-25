@@ -1,14 +1,14 @@
 """Period-calendar contract tests for ``portlearn.calendar``.
 
 These tests freeze the period-end → aware-instant convention
-frozen in the substrate: a month-end or
+fixed in the substrate: a month-end or
 quarter-end calendar day maps to the last instant of that period in a
 declared timezone — 23:59:59.999999 on the last calendar day,
 UTC-normalized at storage.  The mapping is defined exactly once in this
 substrate module and imported — never restated — by later consumers.
 
 Substrate discipline (C2/C3): the module is stdlib-only, pure, builds
-every produced instant through the frozen ``portlearn.timing.to_instant``
+every produced instant through the fixed ``portlearn.timing.to_instant``
 law, defines no contract errors, and exposes no provider, ingestion,
 alignment, or schedule machinery.
 """
@@ -154,7 +154,7 @@ class TestCalendarSubstrateDiscipline:
             attribute = getattr(portlearn.calendar, name)
             assert not (isinstance(attribute, type) and issubclass(attribute, Exception)), (
                 f"the calendar substrate defines the error {name!r}; "
-                "contract errors are owned by their frozen modules"
+                "contract errors are owned by their fixed modules"
             )
 
     def test_module_imports_portlearn_timing_only(self) -> None:

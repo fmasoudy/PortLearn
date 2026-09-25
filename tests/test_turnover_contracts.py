@@ -1,6 +1,6 @@
 """Behavior-named conformance suite for the turnover contract.
 
-These tests freeze the approved portfolio-turnover laws: exactly two
+These tests freeze the portfolio-turnover laws: exactly two
 named conventions over a ``WeightTrade`` — ``two_sided(trade) =
 Σᵢ|Δwᵢ|`` and ``one_way(trade) = 0.5·Σᵢ|Δwᵢ|`` (some literature
 calls this "half-turnover") — weight-space and per-trade by

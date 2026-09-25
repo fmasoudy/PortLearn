@@ -126,7 +126,7 @@ def test_decision_on_information_not_yet_published_is_blocked() -> None:
 
 def test_information_arriving_inside_the_decision_execution_gap_is_leakage() -> None:
     """Information first available after the decision but before execution
-    satisfies no admission verdict: the gate is the decision instant only,
+    satisfies no admission verdict: the check is the decision instant only,
     so admitting it would be look-ahead leakage."""
     intraday_revision = TimedObservation(
         series_id="AUD_CPI_QOQ",
@@ -170,7 +170,7 @@ def test_calendar_date_decision_instant_is_rejected_fail_closed() -> None:
 
 def test_information_without_declared_availability_is_rejected() -> None:
     """A source unable to declare when its information first could have
-    been known must fail closed with ``MissingAvailabilityError`` — never
+    been known must unconditionally with ``MissingAvailabilityError`` — never
     default to the observation instant or "immediately available"."""
     with pytest.raises(MissingAvailabilityError):
         require_available_for_decision(object(), APRIL_DECISION)
@@ -448,7 +448,7 @@ def test_deciding_at_or_after_the_forecast_origin_is_admissible() -> None:
 
 def test_naive_forecast_origin_rejects_before_any_comparison() -> None:
     """A naive forecast origin cannot be placed on the timeline, so the
-    compatibility gate rejects it with ``NaiveTimestampError`` before any
+    compatibility check rejects it with ``NaiveTimestampError`` before any
     ordering comparison is attempted."""
     naive_forecast = _NaiveDatedForecast()
     decision = PortfolioDecision(
@@ -583,7 +583,7 @@ def test_leakage_battery_is_total_and_reports_every_outcome() -> None:
     The report is the evidence, never an exception."""
 
     def _blocked_lookahead() -> None:
-        # The gate form blocks the revision leak; the boolean form below does not.
+        # The check form blocks the revision leak; the boolean form below does not.
         require_available_for_decision(_cpi_revision(), APRIL_DECISION)
 
     def _deliberately_unblocked_leak() -> None:

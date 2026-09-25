@@ -1,6 +1,6 @@
 """Behavior-named conformance suite for the weight-trade contract.
 
-These tests freeze the approved weight-space trade transition: the
+These tests freeze the weight-space trade transition: the
 ``WeightTrade`` primitive constructed by ``portlearn.trades.from_weights``
 as the explicit ``PRE_TRADE → TARGET`` transition with ``Δw =
 TARGET − PRE_TRADE``, alignment by asset identifier (never mapping
@@ -11,7 +11,7 @@ revalidation of the drifted book
 against TARGET constraints, full retention of the pre-trade book, the
 target, and the delta mapping, optimizer-agnostic and timeless
 carriage (no optimizer identity, no execution timestamp, ledger row,
-accounting period, or wealth path), and fail-closed numerics on
+accounting period, or wealth path), and unconditional numerics on
 non-finite deltas.
 """
 
@@ -313,7 +313,7 @@ def test_timeless_object_carries_no_execution_or_ledger_fields() -> None:
 
 
 # ---------------------------------------------------------------------------
-# Fail-closed numerics
+# Validated numerics
 # ---------------------------------------------------------------------------
 
 

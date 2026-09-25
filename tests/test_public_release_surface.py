@@ -134,7 +134,7 @@ def test_changelog_carries_an_unreleased_section() -> None:
 def test_changelog_version_headings_parse_as_pep_440() -> None:
     """Every version heading in the changelog is a valid PEP 440 version.
 
-    This is the structural gate that keeps the release mechanism's
+    This is the structural check that keeps the release mechanism's
     ``## [{version}]`` lookup well-formed: a heading that cannot parse as
     PEP 440 could never match the version the release workflow validates,
     so it is malformed here, not merely unconventional.

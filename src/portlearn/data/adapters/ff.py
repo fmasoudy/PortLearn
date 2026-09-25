@@ -119,12 +119,12 @@ _OFFLINE_RETRIEVAL_INSTANT = datetime(1970, 1, 1, tzinfo=UTC)
 
 
 class UnknownDatasetError(ValueError):
-    """The dataset identifier names no catalog entry (fail-closed)."""
+    """The dataset identifier names no catalog entry (strict)."""
 
 
 @dataclass(frozen=True)
 class FFDatasetEntry:
-    """One frozen catalog entry: URL, member, kind, units, frequency."""
+    """An immutable catalog entry: URL, member, kind, units, frequency."""
 
     dataset_id: str
     url: str
@@ -228,7 +228,7 @@ class FFProvenance(ingestion.SourceProvenance):
     the provider-layer retrieval facts: source URL,
     ``Last-Modified`` when the provider supplied it, the copyright/
     attribution line, the closed ``dataset_kind``, the catalog
-    ``dataset_id``, and the not-investable warning.  The ``SourceProvenance`` shape is never mutated — extension is by
+    ``dataset_id``, and the not-investable warning.  The ``SourceProvenance`` shape is never modify — extension is by
     subclass, never by editing the ingestion module.
     """
 
@@ -261,7 +261,7 @@ class FFRetrievalProvenance(RetrievalProvenance):
     There is deliberately **no** ``availability`` field and this record is
     deliberately *not* a
     :class:`~portlearn.data.ingestion.SourceProvenance`: a retrieval-only
-    load can never satisfy the qualified provenance contract.  Frozen
+    load can never satisfy the qualified provenance contract.  Immutable
     and hashable end-to-end (``header_order`` is an immutable tuple of
     column names).
     """
@@ -295,16 +295,16 @@ class FFRetrievalProvenance(RetrievalProvenance):
 
 
 # --------------------------------------------------------------------------- #
-# Admission (fail-closed, no defaults)
+# Admission (unconditional, no defaults)
 # --------------------------------------------------------------------------- #
 
 
 def _require_catalog_entry(dataset_id: Any) -> FFDatasetEntry:
     if not isinstance(dataset_id, str) or dataset_id not in FF_DATASETS:
         raise UnknownDatasetError(
-            f"no catalog entry named {dataset_id!r}: the frozen catalog "
+            f"no catalog entry named {dataset_id!r}: the fixed catalog "
             f"holds exactly {sorted(FF_DATASETS)}; dataset identifiers "
-            "are exact-match only, fail-closed."
+            "are exact-match only and reject otherwise."
         )
     return FF_DATASETS[dataset_id]
 
@@ -352,7 +352,7 @@ def _parse_value(cell: str) -> tuple[bool, float]:
         raise ValueError(
             f"provider cell {stripped!r} is neither a numeric "
             "observation nor a missing-data sentinel; the decoder "
-            "rejects unparseable provider bytes fail-closed."
+            "rejects unparseable provider bytes unconditional."
         ) from None
     if value in _MISSING_SENTINELS:
         return False, 0.0
@@ -360,7 +360,7 @@ def _parse_value(cell: str) -> tuple[bool, float]:
 
 
 def _monthly_key(yyyymm: str) -> tuple[int, int]:
-    """(year, month) from a six-digit monthly period key, fail-closed."""
+    """(year, month) from a six-digit monthly period key, ."""
     if len(yyyymm) != 6 or not yyyymm.isdigit():
         raise ValueError(
             f"monthly period key {yyyymm!r} must be six digits YYYYMM."
@@ -404,7 +404,7 @@ def _find_factor_header(lines: list[str]) -> tuple[int, list[str], bool]:
             return index, _parse_header_line(line, fixed_width), fixed_width
     raise ValueError(
         "no factor column header found in the member text; the provider "
-        "format is not recognized, fail-closed."
+        "format is not recognized, and reject."
     )
 
 
@@ -419,7 +419,7 @@ def _find_section_header(
             return index + 1, _parse_header_line(header, False)
     raise ValueError(
         f"no section titled {section_title!r} found in the member text; "
-        "the provider format is not recognized, fail-closed."
+        "the provider format is not recognized, and reject."
     )
 
 
@@ -453,7 +453,7 @@ def _data_rows(
     if not rows:
         raise ValueError(
             "the decoded data block holds no observation rows; the "
-            "provider format is not recognized, fail-closed."
+            "provider format is not recognized, and reject."
         )
     return names, rows
 
@@ -616,7 +616,7 @@ def decode(
         if members != [entry.member_name]:
             raise ValueError(
                 f"provider ZIP members {members!r} do not match the "
-                f"catalog member {entry.member_name!r}, fail-closed."
+                f"catalog member {entry.member_name!r}, and reject."
             )
         text = archive.read(entry.member_name).decode("ascii")
     names, rows = _data_rows(text, entry)
@@ -720,7 +720,7 @@ def decode_unqualified(
         if members != [entry.member_name]:
             raise ValueError(
                 f"provider ZIP members {members!r} do not match the "
-                f"catalog member {entry.member_name!r}, fail-closed."
+                f"catalog member {entry.member_name!r}, and reject."
             )
         text = archive.read(entry.member_name).decode("ascii")
     names, rows = _data_rows(text, entry)
@@ -768,7 +768,7 @@ def decode_unqualified(
 
 
 def require_candidate_asset_returns(provenance: ingestion.SourceProvenance) -> None:
-    """Permit candidate asset-return input semantics or reject fail-closed.
+    """Permit candidate asset-return input semantics or reject invalid input.
 
     Only a ``portfolio_returns`` dataset may pass this fence, and passing
     it claims nothing more than candidate input semantics — never

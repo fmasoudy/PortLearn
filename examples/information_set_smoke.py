@@ -13,7 +13,7 @@ Offline and side-effect free: importing this module executes nothing;
 every read is a committed fixture under ``tests/adapters/fixtures``,
 no network is touched, no file is written, and no clock feeds the data
 path — every retrieval instant is a fixed fixture-derived constant, so
-repeated replays print byte-identical summaries.
+repeated replays print identical summaries.
 """
 
 from __future__ import annotations
@@ -230,7 +230,7 @@ def compose_replay() -> types.SimpleNamespace:
         metadata_bytes=FRED_DFFD_META.read_bytes(),
     )
 
-    # Daily-derived monthly feature: the frozen rolling transform over
+    # Daily-derived monthly feature: the fixed rolling transform over
     # the daily factor leg, lineage-checked at each output's own window.
     feature_inputs = sorted(
         (
@@ -268,7 +268,7 @@ def compose_replay() -> types.SimpleNamespace:
 
     # Alignment: one store over every decoded family, one month-end
     # decision instant from the calendar builder, and the requested
-    # observation groups admitted through the frozen vintage operation.
+    # observation groups admitted through the strict vintage operation.
     store = ObservationStore(
         [*ff_monthly, *ff_daily, *feature_outputs, *cpim, *dffd, *ff49]
     )
@@ -315,7 +315,7 @@ def compose_replay() -> types.SimpleNamespace:
     )
 
     # The leakage battery: future, revision, lineage, and undated-
-    # decision leak attempts, each expected to be blocked by its frozen
+    # decision leak attempts, each expected to be blocked by its fixed
     # contract error.
     naive_decision = datetime(2026, 9, 30)  # noqa: DTZ001 — deliberately naive
     early_feature = TimedObservation(

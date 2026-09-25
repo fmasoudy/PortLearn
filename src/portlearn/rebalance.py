@@ -7,7 +7,7 @@ the same object either way — :class:`HoldingPlan` bindings of two
 independently declared instant sequences (rebalance decisions and
 accounting), buy-and-hold drift over caller-supplied per-asset gross
 growth factors, exact-fill execution of a target at its execution
-instant, and the availability gate for factor information at the
+instant, and the availability safety check for factor information at the
 instant of use.
 
 The laws, in summary:
@@ -19,13 +19,13 @@ The laws, in summary:
   dataset, or from a frequency adjective; every cross-frequency
   pairing is first-class, and rebalance-at-every-accounting-instant is
   expressed by declaring the sequences identical.
-- **The growth law.** ``w(t⁻)_i = w_i·g_i / Σ_j w_j·g_j`` over a frozen
+- **The growth law.** ``w(t⁻)_i = w_i·g_i / Σ_j w_j·g_j`` over a immutable
   universe: buy-and-hold reweighting by caller-supplied gross growth
   factors ``g_i = 1 + r_i``, no trade, no cost, no cash flow, no
   normalization beyond the budget identity itself. The module never
   constructs, infers, or interprets the factors — their provenance is
   owned by the caller's data contract.
-- **Fail-closed numerics.** Every factor is finite and nonnegative;
+- **Validated numerics.** Every factor is finite and nonnegative;
   every weight-factor product must be finite; the portfolio-growth
   denominator must be strictly positive and finite — the binding
   short/leverage rule. An individual ``g_i = 0`` is lawful arithmetic
@@ -86,7 +86,7 @@ __all__ = [
 def _checked_float(value: float, name: str) -> float:
     """Checked real→float conversion: an int beyond the float range
     raises ``OverflowError`` from ``float()`` — mapped here onto the
-    fail-closed finiteness check so the module error surface stays
+    unconditional finiteness check so the module error surface stays
     ``ValueError`` only. No clipping, no normalization: an out-of-range
     real is rejected, never rescaled."""
     try:
@@ -102,7 +102,7 @@ def _finite_fsum(values: list[float], name: str) -> float:
     """``math.fsum`` guarded so the aggregation itself can never leak
     ``OverflowError`` or return a non-finite total: individually finite
     values whose exact sum overflows the float range are rejected
-    fail-closed with ``ValueError`` (ValueError-only error surface)."""
+    unconditionally with ``ValueError`` (ValueError-only error surface)."""
     try:
         total = math.fsum(values)
     except OverflowError:
@@ -114,7 +114,7 @@ def _finite_fsum(values: list[float], name: str) -> float:
 
 def _require_identifier(asset: object) -> None:
     """An asset identifier is a non-blank string; blank or whitespace-only
-    identifiers (and non-strings) reject fail-closed."""
+    identifiers (and non-strings) reject unconditionally."""
     if not isinstance(asset, str) or not asset.strip():
         raise ValueError(
             "an asset identifier must be a non-blank string naming one "
@@ -144,7 +144,7 @@ def _require_nonnegative_factor(value: object) -> float:
 
 
 def _validated_factors(factors: object) -> dict[str, float]:
-    """Validate a growth-factor mapping fail-closed and return a fresh
+    """Validate a growth-factor mapping unconditional and return a fresh
     snapshot dict: identifiers non-blank, factors finite nonnegative
     reals, and the input itself a mapping."""
     if not isinstance(factors, Mapping):
@@ -161,7 +161,7 @@ def _validated_factors(factors: object) -> dict[str, float]:
 
 def _require_stride_count(count: object) -> None:
     """A calendar generator emits a positive integer number of
-    consecutive period ends; anything else rejects fail-closed."""
+    consecutive period ends; anything else rejects unconditionally."""
     if not isinstance(count, int) or isinstance(count, bool) or count < 1:
         raise ValueError(
             "count must be a positive integer naming how many consecutive "
@@ -252,7 +252,7 @@ class RebalanceSchedule:
     instant awareness, nothing else. Calendar-generated and explicitly
     enumerated routes produce the same object — equality is on the
     normalized instant sequence. The stored ``instants`` tuple is
-    UTC-normalized (comparison basis) and snapshotted: later mutation
+    UTC-normalized (comparison basis) and snapshotted: later modify
     of the source iterable is invisible.
     """
 
@@ -320,7 +320,7 @@ def quarter_end_schedule(
 
     Generates ``count`` successive quarter-end instants starting with
     ``quarter`` (1–4) of ``year``, rolling across year boundaries,
-    through the period-calendar substrate with the same fail-closed
+    through the period-calendar substrate with the same strict
     timezone rule as :func:`month_end_schedule`.
     """
     _require_stride_count(count)
@@ -422,7 +422,7 @@ class HoldingPlan:
 class GrowthFactors:
     """Per-asset gross growth factors carrying their availability.
 
-    A frozen value object pairing a validated factor mapping (finite
+    A immutable value object pairing a validated factor mapping (finite
     nonnegative reals on non-blank identifiers, snapshotted immutably)
     with the aware ``available_time`` declaring when the factors first
     could have been known. The factor *provenance* — raw prices,
@@ -442,9 +442,9 @@ class GrowthFactors:
 
 
 def require_factors_available(factors: Any, use_time: Any) -> None:
-    """Admission gate for growth-factor information at an instant of use.
+    """Admission safety check for growth-factor information at an instant of use.
 
-    Composes the timing module's admission gate directly — the gate is
+    Composes the timing module's admission safety check directly — the safety check is
     the instant of consumption: factors whose ``available_time`` is
     after the use instant reject with ``FutureInformationError``.
     Factors forming a TARGET at a decision instant ``t`` are consumed
@@ -463,9 +463,9 @@ def drift_weights(
 ) -> PortfolioWeights:
     """Buy-and-hold drift of a realized portfolio over growth factors.
 
-    ``w(t⁻)_i = w_i·g_i / Σ_j w_j·g_j`` on a frozen universe: the
+    ``w(t⁻)_i = w_i·g_i / Σ_j w_j·g_j`` on a immutable universe: the
     factors must name exactly the weight object's assets. Inputs
-    validate fail-closed (factors finite and nonnegative; every
+    validate strict (factors finite and nonnegative; every
     weight-factor product finite; the denominator aggregated under the
     guarded exact-sum discipline), the portfolio-growth denominator
     must be strictly positive and finite — a non-positive, zero, or
@@ -490,7 +490,7 @@ def drift_weights(
     if set(checked) != set(weights.assets):
         raise ValueError(
             "the growth-factor universe must equal the weights universe "
-            "exactly (the universe is frozen over the holding interval); "
+            "exactly (the universe is fixed over the holding interval); "
             f"factors name {sorted(checked)}, weights name "
             f"{sorted(weights.assets)}"
         )
@@ -533,7 +533,7 @@ def execute_rebalance(target: Any, timing: Any) -> PortfolioWeights:
     ``DecisionTiming``; same-instant decide-and-execute is the
     admissible special case). The result is a fresh ``POST_TRADE``
     value object equal to the target exactly — the target itself is
-    never mutated, and execution realism (partial fills, refusals) is
+    never modify, and execution realism (partial fills, refusals) is
     deliberately out of scope. Only a ``TARGET`` may be executed.
     """
     if not isinstance(target, PortfolioWeights) or (
@@ -545,7 +545,7 @@ def execute_rebalance(target: Any, timing: Any) -> PortfolioWeights:
             f"exact fill; got {type(target).__name__} in state {state!r}. "
             "Only a TARGET is executable."
         )
-    _decision_execution_instants(timing)  # chronology law, fail-closed
+    _decision_execution_instants(timing)  # chronology law, unconditional
     return PortfolioWeights(dict(target.weights), WeightState.POST_TRADE)
 
 

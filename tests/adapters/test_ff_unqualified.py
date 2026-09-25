@@ -27,7 +27,7 @@ FIXTURES = Path(__file__).resolve().parent / "fixtures" / "ff"
 INDUSTRY49_ZIP = "ff_industry49_monthly_csv.zip"
 INDUSTRY49 = "industry49_monthly_csv"
 
-#: Frozen retrieval-provenance field set (retrieval facts only — no availability).
+#: Pinned retrieval-provenance field set (retrieval facts only — no availability).
 FF_RETRIEVAL_FIELDS = frozenset(
     {
         "source_id",
@@ -49,7 +49,7 @@ FF_RETRIEVAL_FIELDS = frozenset(
     }
 )
 
-#: Frozen fixture hash (pinned by the decoder tests; bytes are read, never
+#: Pinned fixture hash (pinned by the decoder tests; bytes are read, never
 #: changed).
 PINNED_INDUSTRY49_SHA256 = (
     "eb4831ad8e0f32d40ef8a6b1775b2e25a229d52b6d9d835559a515f0465cb9bf"
@@ -185,7 +185,7 @@ def test_decode_unqualified_maps_sentinels_to_absence_and_is_deterministic() -> 
 
 def test_decode_unqualified_hash_pin_rejects_mutated_bytes_with_retrieval() -> None:
     """With ``retrieval`` supplied the sibling is hash-pinned: mutated
-    bytes reject (L3 — the frozen-decoder pin, mirrored by the sibling)."""
+    bytes reject (L3 — the fixed-decoder pin, mirrored by the sibling)."""
     ff = _ff()
     payload = _fixture_bytes()
     _, provenance = ff.decode_unqualified(payload, INDUSTRY49)
@@ -196,7 +196,7 @@ def test_decode_unqualified_hash_pin_rejects_mutated_bytes_with_retrieval() -> N
 
 
 def test_period_key_observation_is_frozen_hashable_and_instant_free() -> None:
-    """``PeriodKeyObservation`` is a frozen hashable value object whose
+    """``PeriodKeyObservation`` is a fixed hashable value object whose
     only fields are the provider label triple (L2)."""
     from portlearn.data._records import PeriodKeyObservation
 
@@ -225,8 +225,8 @@ def test_period_key_observation_is_frozen_hashable_and_instant_free() -> None:
 def test_retrieval_provenance_field_set_is_pinned_and_adoptable(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """The retrieval field set is exactly the frozen L3 list, the object is
-    hashable, is not a ``SourceProvenance``, and the frozen qualified
+    """The retrieval field set is exactly the fixed L3 list, the object is
+    hashable, is not a ``SourceProvenance``, and the fixed qualified
     decoder adopts it as its ``retrieval=`` pin (L3)."""
     from datetime import timedelta
     from zoneinfo import ZoneInfo
@@ -246,7 +246,7 @@ def test_retrieval_provenance_field_set_is_pinned_and_adoptable(
     assert provenance.adapter_identity == "portlearn.data.adapters.ff"
     assert provenance.content_sha256 == PINNED_INDUSTRY49_SHA256
 
-    # The frozen qualified decoder adopts the retrieval-only provenance.
+    # The fixed qualified decoder adopts the retrieval-only provenance.
     policy = AvailabilityPolicy.fixed_lag(
         timedelta(days=31), justification="declared research assumption"
     )

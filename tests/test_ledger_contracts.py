@@ -1,7 +1,7 @@
 """Behavior-named conformance suite for the portfolio-ledger contract.
 
 These tests freeze the portfolio-ledger laws:
-one frozen ``LedgerRow`` per accounting
+one fixed ``LedgerRow`` per accounting
 period in finance-table language with zero/one/many ``Execution``
 records; segment-composed gross growth ``G_gross,t = Π_m D_m`` over
 holding segments split at execution instants; the composed cost factor
@@ -10,7 +10,7 @@ G_gross × F_cost``; the multiplicative unit-NAV wealth recursion
 ``W_{t+1} = W_t × G_net,t``; the all-retained-books row universe; the
 half-open ``[period_start, period_end)`` execution-ownership rule;
 closing weights at ``period_end⁻`` before any execution exactly at
-``period_end``; POST_TRADE = TARGET enforced fail-closed on every
+``period_end``; POST_TRADE = TARGET enforced unconditional on every
 supplied ``AccountingEngine``; the held-target
 ``realized_returns`` law compounding per-asset factors over the
 holding interval; and no strategy name
@@ -144,7 +144,7 @@ def _world_x(decisions: list[PortfolioDecision] | None = None):
         "cost_model": Proportional(0.3, one_way),
     }
 # ---------------------------------------------------------------------------
-# Floor 1 — row shape is the finance table, nothing else (D9/D10).
+# Law 1 — row shape is the finance table, nothing else (D9/D10).
 # ---------------------------------------------------------------------------
 
 
@@ -192,7 +192,7 @@ def test_row_shape_fields_finance_table() -> None:
 
 
 # ---------------------------------------------------------------------------
-# Floor 2 — zero / one / many executions per period.
+# Law 2 — zero / one / many executions per period.
 # ---------------------------------------------------------------------------
 
 
@@ -225,7 +225,7 @@ def test_executions_tuple_zero_one_many() -> None:
     assert [e.execution_time for e in many.executions] == [MID1, MID2]
 
 # ---------------------------------------------------------------------------
-# Floor 3 — gross is segment-composed, never single-denominator (T3).
+# Law 3 — gross is segment-composed, never single-denominator (T3).
 # ---------------------------------------------------------------------------
 
 
@@ -248,7 +248,7 @@ def test_gross_return_segment_composed() -> None:
 
 
 # ---------------------------------------------------------------------------
-# Floor 4 — two executions in one period compose both factor tracks (T3/T4).
+# Law 4 — two executions in one period compose both factor tracks (T3/T4).
 # ---------------------------------------------------------------------------
 
 
@@ -264,7 +264,7 @@ def test_two_executions_one_period_composes_factors() -> None:
 
 
 # ---------------------------------------------------------------------------
-# Floor 5 — costs enter multiplicatively, never additively (T3/T5).
+# Law 5 — costs enter multiplicatively, never additively (T3/T5).
 # ---------------------------------------------------------------------------
 
 
@@ -282,7 +282,7 @@ def test_cost_factor_multiplicative_only() -> None:
 
 
 # ---------------------------------------------------------------------------
-# Floor 6 — the wealth recursion is multiplicative only (T5).
+# Law 6 — the wealth recursion is multiplicative only (T5).
 # ---------------------------------------------------------------------------
 
 
@@ -328,8 +328,8 @@ def test_wealth_recursion_multiplicative_only() -> None:
 # World Z — within-period enter+exit (floor 11): period [T0,T2) opens
 # {A,B}, executes at MID1 into {A,B,C}, at MID2 back to {A,B}; C is in
 # an execution book only, yet must appear in the row's universe.
-# (Implementation-tranche note: the horizon must end at T2 — MID2 is
-# Feb 16, past T1 = Feb 1, and floor 16 / §6(iii) reject an execution
+# (Implementation note: the horizon must end at T2 — MID2 is
+# Feb 16, past T1 = Feb 1, and floor 16 / the execution law reject an execution
 # outside the horizon; the fixture's own three-segment factor supply
 # {T0, MID1, MID2} spans [T0, MID2) + a final drift segment.)
 # ---------------------------------------------------------------------------
@@ -360,7 +360,7 @@ def _enter_exit_world() -> dict[str, Any]:
         "initial_weights": {"A": 0.5, "B": 0.5},
         "accounting_instants": (T0, T2),
         # The final segment re-enters the {A,B} book: factors name
-        # exactly the held universe (the frozen within-segment law).
+        # exactly the held universe (the fixed within-segment law).
         "growth_factors": {
             T0: {"A": 1.0, "B": 1.0},
             MID1: {"A": 1.0, "B": 1.0, "C": 1.0},
@@ -374,7 +374,7 @@ def _enter_exit_world() -> dict[str, Any]:
     }
 
 # ---------------------------------------------------------------------------
-# Floor 7 — unit-NAV budget is required, fail-closed (T5/D8).
+# Law 7 — unit-NAV budget is required, unconditional (T5/D8).
 # ---------------------------------------------------------------------------
 
 
@@ -437,7 +437,7 @@ def test_ledger_composes_accounting_engine() -> None:
         assert dict(execution.post_trade_weights) == dict(
             execution.target_weights
         )
-    # ExactFillAccounting itself returns the target through the frozen
+    # ExactFillAccounting itself returns the target through the fixed
     # AccountingResult surface.
     result = ExactFillAccounting().account(
         _decision({"A": 0.4, "B": 0.6}, MID1, MID1),
@@ -448,7 +448,7 @@ def test_ledger_composes_accounting_engine() -> None:
     assert dict(result.post_trade_weights) == {"A": 0.4, "B": 0.6}
 
 # ---------------------------------------------------------------------------
-# Floor 10 — closing_weights boundary semantics.
+# Law 10 — closing_weights boundary semantics.
 # ---------------------------------------------------------------------------
 
 
@@ -473,7 +473,7 @@ def test_closing_weights_boundary_semantics() -> None:
 
 
 # ---------------------------------------------------------------------------
-# Floor 11 — universe retains a within-period enter+exit identifier (T6).
+# Law 11 — universe retains a within-period enter+exit identifier (T6).
 # ---------------------------------------------------------------------------
 
 
@@ -486,7 +486,7 @@ def test_universe_retains_within_period_enter_exit() -> None:
 
 
 # ---------------------------------------------------------------------------
-# Floor 16 — an execution belongs to the period CONTAINING it (v1 floor).
+# Law 16 — an execution belongs to the period CONTAINING it (v1 floor).
 # ---------------------------------------------------------------------------
 
 
@@ -509,7 +509,7 @@ def test_execution_assigned_to_period_containing_it() -> None:
              _decision({"A": 0.25, "B": 0.75}, MID2, MID2),
              _decision({"A": 0.5, "B": 0.5}, T2, T2)]
         ))
-    # Non-monotone executions reject too (frozen sequence law).
+    # Non-monotone executions reject too (fixed sequence law).
     with pytest.raises(InvalidChronologyError):
         build_ledger(**_world_x(
             [_decision({"A": 0.25, "B": 0.75}, MID2, MID2),
@@ -517,7 +517,7 @@ def test_execution_assigned_to_period_containing_it() -> None:
         ))
 
 # ---------------------------------------------------------------------------
-# Floor 12 — q boundary rejects through the frozen cost law (v1 floor).
+# Law 12 — q boundary rejects through the fixed cost law (v1 floor).
 # ---------------------------------------------------------------------------
 
 
@@ -563,7 +563,7 @@ def test_row_aggregate_conventions_declared() -> None:
     assert row.executions[0].transaction_cost == pytest.approx(q1)
     assert row.executions[1].turnover == pytest.approx(0.25)
     assert row.executions[1].transaction_cost == pytest.approx(q2)
-    # The per-execution q values are the frozen cost law on the
+    # The per-execution q values are the fixed cost law on the
     # retained trade — recompute them from the record's own primitives.
     from portlearn.turnover import one_way as ow
 
@@ -573,12 +573,12 @@ def test_row_aggregate_conventions_declared() -> None:
         assert expected_q == pytest.approx(execution.transaction_cost)
 
 # ---------------------------------------------------------------------------
-# Floor 13 — inherited exceptions, no new classes.
+# Law 13 — inherited exceptions, no new classes.
 # ---------------------------------------------------------------------------
 
 
 def test_exceptions_inherited_no_new_classes() -> None:
-    # Naive instants anywhere reject with the frozen NaiveTimestampError.
+    # Naive instants anywhere reject with the fixed NaiveTimestampError.
     naive_world = _world_x() | {
         "accounting_instants": (
             datetime(2026, 1, 1), datetime(2026, 3, 1)  # noqa: DTZ001 — deliberately naive instants (NaiveTimestampError probe)
@@ -587,13 +587,13 @@ def test_exceptions_inherited_no_new_classes() -> None:
     with pytest.raises(NaiveTimestampError):
         build_ledger(**naive_world)
     # Overlapping/non-increasing accounting periods reject with the
-    # frozen InvalidChronologyError (strictly increasing law).
+    # fixed InvalidChronologyError (strictly increasing law).
     with pytest.raises(InvalidChronologyError):
         build_ledger(**_world_x() | {
             "accounting_instants": (T0, T0, T2)
         })
-    # Domain violations raise plain ValueError through frozen laws:
-    # a negative growth factor rejects through the frozen factor law.
+    # Domain violations raise plain ValueError through fixed laws:
+    # a negative growth factor rejects through the fixed factor law.
     with pytest.raises(ValueError):
         build_ledger(**_world_x() | {
             "growth_factors": {
@@ -621,7 +621,7 @@ def test_exceptions_inherited_no_new_classes() -> None:
 
 
 # ---------------------------------------------------------------------------
-# Floor 14 — frozen rows, deterministic value equality, no hash promises.
+# Law 14 — fixed rows, deterministic value equality, no hash promises.
 # ---------------------------------------------------------------------------
 
 
@@ -652,7 +652,7 @@ def test_rows_frozen_value_equal_not_hash_guaranteed() -> None:
 
 
 # ---------------------------------------------------------------------------
-# Floor 19 — realized returns follow the execution holding interval
+# Law 19 — realized returns follow the execution holding interval
 # (the realized-returns holding-interval law; the spy records what the engine received).
 # ---------------------------------------------------------------------------
 
@@ -675,15 +675,15 @@ def test_engine_realized_returns_follow_execution_holding_interval() -> None:
 
 
 # ---------------------------------------------------------------------------
-# Floor 20 — initial_wealth is positive, finite, and real, fail-closed
-# (T5/W0; the §8 line-103 W₀ ≤ 0 edge probe).
+# Law 20 — initial_wealth is positive, finite, and real, unconditional
+#.
 # ---------------------------------------------------------------------------
 
 
 def test_initial_wealth_positive_fail_closed() -> None:
     # W0 must be strictly positive and finite: 0, negative, NaN, and
     # +inf each reject with ValueError naming 'initial_wealth' (and
-    # -inf / bool / non-real reject through the same gate).
+    # -inf / bool / non-real reject through the same check).
     for bad in (0, -1, float("nan"), float("inf"), float("-inf"), True, "1"):
         with pytest.raises(ValueError, match="initial_wealth"):
             build_ledger(**_world_x(), initial_wealth=bad)
@@ -699,14 +699,14 @@ def test_initial_wealth_positive_fail_closed() -> None:
     assert scaled.wealth_close == pytest.approx(w0 * 1.482890625)
     assert scaled.wealth_close == pytest.approx(w0 * (1.0 + default.net_return))
     # W0 is NOT the weight budget: the unit-NAV book law (D8) is a
-    # separate gate that still rejects a budget-0.5 book at any W0.
+    # separate check that still rejects a budget-0.5 book at any W0.
     with pytest.raises(ValueError, match="budget"):
         build_ledger(**_world_x() | {"initial_weights": {"A": 0.5}},
                      initial_wealth=w0)
 
 
 # ---------------------------------------------------------------------------
-# Floor 18 — pl.ledger imports only frozen modules (composition law).
+# Law 18 — pl.ledger imports only fixed modules (composition law).
 # ---------------------------------------------------------------------------
 
 
@@ -714,7 +714,7 @@ def test_ledger_imports_only_frozen_modules() -> None:
     import ast
 
     tree = ast.parse(inspect.getsource(ledger_module))
-    frozen = {
+    fixed = {
         "portlearn.weights",
         "portlearn.timing",
         "portlearn.calendar",
@@ -730,19 +730,19 @@ def test_ledger_imports_only_frozen_modules() -> None:
             for alias in node.names:
                 root = alias.name.split(".")[0]
                 assert (
-                    root in stdlib_roots or alias.name in frozen
+                    root in stdlib_roots or alias.name in fixed
                 ), f"illegal import: {alias.name}"
         elif isinstance(node, ast.ImportFrom):
             module = node.module or ""
             if node.level:
                 local = module.split(".")[-1] if module else ""
                 assert local in {
-                    m.split(".")[-1] for m in frozen
+                    m.split(".")[-1] for m in fixed
                 }, f"illegal relative import: {module}"
             elif module == "portlearn":
                 for alias in node.names:
                     qualified = f"portlearn.{alias.name}"
-                    assert qualified in frozen, f"illegal from-import: {qualified}"
+                    assert qualified in fixed, f"illegal from-import: {qualified}"
             else:
                 assert module.split(".")[0] in stdlib_roots, (
                     f"illegal import: {module}"

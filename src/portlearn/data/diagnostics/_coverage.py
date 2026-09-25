@@ -51,7 +51,7 @@ class SeriesCoverage:
 
 @dataclass(frozen=True)
 class CoverageReport:
-    """The frozen coverage report: observed-support counts only."""
+    """The fixed coverage report: observed-support counts only."""
 
     report_kind: str
     availability_state: str

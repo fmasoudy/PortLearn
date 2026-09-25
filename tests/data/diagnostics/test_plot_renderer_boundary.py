@@ -143,7 +143,7 @@ def test_plot_kind_and_source_matrix_is_exact() -> None:
     with pytest.raises(ValueError):
         diagnostics.plot(describe_report, kind="series")
 
-    # Unknown kinds reject fail-closed.
+    # Unknown kinds reject unconditionally.
     for bad in ("box", "scatter", "hist", "", "DESCRIBE", None, 5):
         with pytest.raises((TypeError, ValueError)):
             diagnostics.plot(dataset, kind=bad)
@@ -210,7 +210,7 @@ def test_plot_of_report_reuses_report_values_verbatim() -> None:
 
     for kind, report in reports.items():
         # (a) plot(dataset) == plot(report) by PlotSpec value equality.
-        # missingness on a dataset requires expected_keys (§4.5), same
+        # missingness on a dataset requires expected_keys, same
         # conditional forwarding as the kind matrix; other kinds stay bare.
         if kind == "missingness":
             from_dataset = diagnostics.plot(
@@ -367,7 +367,7 @@ def _attr_name(node):
 def test_plotspec_render_is_the_sole_public_matplotlib_boundary() -> None:
     """``render()`` is the single public rendering entry; every other
     public name on the spec and the module is renderer-neutral; the
-    module public surface is the frozen five blocks plus the ``PlotSpec``
+    module public surface is the fixed five blocks plus the ``PlotSpec``
     type; and the matplotlib import lives in exactly one function scope
     — the private renderer leaf — with exactly one module importing it
     anywhere, never at module scope."""
@@ -384,13 +384,13 @@ def test_plotspec_render_is_the_sole_public_matplotlib_boundary() -> None:
     ), f"no second rendering surface may exist on the spec: {sorted(public_spec_names)}"
 
     module_public = {name for name in dir(diagnostics) if not name.startswith("_")}
-    # Real oracle derived only from the frozen public surface (§6): the
+    # Real reference derived only from the public surface: the
     # public API is the five functions and their typed outputs — every
     # public callable other than the five blocks and the PlotSpec type
     # is a public-surface breach.
     for block in REPORT_KINDS + ("plot",):
         assert callable(getattr(diagnostics, block, None)), (
-            f"the module must expose the frozen public block {block!r}"
+            f"the module must expose the public block {block!r}"
         )
     stray_callables = {
         name
@@ -399,7 +399,7 @@ def test_plotspec_render_is_the_sole_public_matplotlib_boundary() -> None:
         and name not in set(REPORT_KINDS) | {"plot", "PlotSpec"}
     }
     assert not stray_callables, (
-        "the module public surface must be exactly the frozen five "
+        "the module public surface must be exactly the fixed five "
         "blocks plus the PlotSpec type; stray public callables found: "
         f"{sorted(stray_callables)}"
     )

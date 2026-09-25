@@ -3,13 +3,13 @@
 These tests freeze the portfolio-weight behavioral contract —
 the closed ``WeightState`` vocabulary, the
 immutable snapshotted ``PortfolioWeights`` value object, the standing
-``WeightConstraints`` declarations with fail-closed well-formedness and
+``WeightConstraints`` declarations with unconditional well-formedness and
 scalar declaration coherence, the pure exposure functions, and the
 single TARGET-only validator ``require_valid_target``.
 
 Every expected value is hand-computed on exact cases (see each test);
 all identifier, numeric, snapshot, and boundary behavior is asserted
-against the frozen laws L1–L14, never against the temporary absence or
+against the fixed laws L1–L14, never against the temporary absence or
 presence of any unrelated successor implementation file.
 """
 
@@ -33,7 +33,7 @@ TOL = 1e-9
 
 
 # ---------------------------------------------------------------------------
-# Construction and laws (§8 "Construction and laws")
+# Construction and laws
 # ---------------------------------------------------------------------------
 
 
@@ -122,12 +122,12 @@ def test_string_state_tag_rejected_no_coercion() -> None:
 
 
 # ---------------------------------------------------------------------------
-# Adversarial numeric inputs (§8 "Adversarial numeric")
+# Adversarial numeric inputs
 # ---------------------------------------------------------------------------
 
 
 def test_nan_inf_weights_rejected() -> None:
-    """NaN and ±inf weights are rejected fail-closed at construction."""
+    """NaN and ±inf weights are rejected unconditionally at construction."""
     for bad_weight in (float("nan"), float("inf"), float("-inf")):
         with pytest.raises(ValueError, match="weight"):
             PortfolioWeights({"AAPL": bad_weight}, WeightState.TARGET)
@@ -194,7 +194,7 @@ def test_huge_integer_constraint_scalars_rejected_valueerror() -> None:
 
 def test_exposure_aggregation_overflow_rejected_valueerror_never_nonfinite() -> None:
     """Individually finite weights whose exposure sum overflows the
-    float range raise ``ValueError`` fail-closed — never
+    float range raise ``ValueError`` unconditional — never
     ``OverflowError``, and never a non-finite return value."""
     with pytest.raises(ValueError, match="gross_exposure must be finite"):
         gross_exposure({"A": 1e308, "B": 1e308})
@@ -203,7 +203,7 @@ def test_exposure_aggregation_overflow_rejected_valueerror_never_nonfinite() -> 
 
 
 # ---------------------------------------------------------------------------
-# Exposures (hand-computed) and mapping validity (§8 "Exposures")
+# Exposures (hand-computed) and mapping validity
 # ---------------------------------------------------------------------------
 
 
@@ -248,7 +248,7 @@ def test_negative_zero_is_not_a_short_position() -> None:
 
 
 # ---------------------------------------------------------------------------
-# Constraint bounds on TARGET (§8 "Constraint bounds", inclusive)
+# Constraint bounds on TARGET
 # ---------------------------------------------------------------------------
 
 
@@ -312,7 +312,7 @@ def test_inclusive_max_abs_net_exposure_both_sides() -> None:
 
 
 def test_constraints_rejected_by_target_only_validator_pre_trade() -> None:
-    """A PRE_TRADE object never enters the validator: the state gate fires."""
+    """A PRE_TRADE object never enters the validator: the state check fires."""
     pre_trade = PortfolioWeights({"A": 2.5, "B": -1.0}, WeightState.PRE_TRADE)
     with pytest.raises(ValueError, match="TARGET"):
         require_valid_target(
@@ -324,7 +324,7 @@ def test_constraints_rejected_by_target_only_validator_pre_trade() -> None:
 
 
 def test_constraints_rejected_by_target_only_validator_post_trade() -> None:
-    """A POST_TRADE object never enters the validator: the state gate fires."""
+    """A POST_TRADE object never enters the validator: the state check fires."""
     post_trade = PortfolioWeights(
         {"A": 0.99, "B": 0.005}, WeightState.POST_TRADE
     )
@@ -435,7 +435,7 @@ def test_non_finite_constraint_bounds_rejected() -> None:
 
 
 def test_realized_states_rejected_by_target_only_validator() -> None:
-    """Realized states are rejected on the state gate alone; no wealth or
+    """Realized states are rejected on the state check alone; no wealth or
     normalization claim is made or tested either way."""
     post_trade = PortfolioWeights(
         {"A": 0.99, "B": 0.005}, WeightState.POST_TRADE
@@ -513,7 +513,7 @@ def test_no_operation_derives_realized_states_from_target() -> None:
 
 
 # ---------------------------------------------------------------------------
-# Constraint well-formedness (L8, fail-closed at construction)
+# Constraint well-formedness (L8, unconditional at construction)
 # ---------------------------------------------------------------------------
 
 
@@ -637,7 +637,7 @@ def test_declaration_coherence_zero_ceiling() -> None:
 
 
 # ---------------------------------------------------------------------------
-# Conformance stand-ins (§4.3)
+# Conformance stand-ins
 # ---------------------------------------------------------------------------
 
 
@@ -662,21 +662,21 @@ def test_external_stand_in_target_weights_pass_construction_and_validation() -> 
 
 def test_hostile_stand_in_nan_blank_and_string_state_all_rejected() -> None:
     """A hostile stand-in emitting NaN weights, blank identifiers, and
-    string state tags is rejected fail-closed — each hostile emission
+    string state tags is rejected unconditionally — each hostile emission
     is isolated at its entry point (the constructor's own identifier,
-    numeric, and state gates), never silently coerced."""
+    numeric, and state checks), never silently coerced."""
 
     def hostile_weights() -> dict[str, float]:
         return {"GOOD": 0.5, " ": 0.25, "BROKEN": float("nan")}
 
     # Blank identifier and NaN weight emissions, isolated one per call so
-    # each gate is exercised on its own (dict order: " " first, NaN second).
+    # each check is exercised on its own (dict order: " " first, NaN second).
     with pytest.raises(ValueError, match="identifier"):
         PortfolioWeights({" ": 0.25}, WeightState.TARGET)
     with pytest.raises(ValueError, match="weight"):
         PortfolioWeights({"BROKEN": float("nan")}, WeightState.TARGET)
-    # The full hostile payload is rejected fail-closed regardless of which
-    # gate fires first.
+    # The full hostile payload is rejected unconditionally regardless of which
+    # check fires first.
     with pytest.raises(ValueError):
         PortfolioWeights(hostile_weights(), WeightState.TARGET)
     # A string state tag is rejected with no coercion into the vocabulary.
@@ -685,13 +685,13 @@ def test_hostile_stand_in_nan_blank_and_string_state_all_rejected() -> None:
 
 
 # ---------------------------------------------------------------------------
-# Supporting frozen-surface behaviors (§4.1 immutability, §4.3 mutation
-# stand-in, and the additive lazy root exposure of §4.1)
+# Supporting fixed-surface behaviors (immutability, mutation
+# stand-in, and the additive lazy root exposure )
 # ---------------------------------------------------------------------------
 
 
 def test_value_objects_and_snapshot_view_reject_mutation() -> None:
-    """§4.1/§4.3: immutable value objects repel attribute and view
+    """Immutable value objects repel attribute and view
     mutation — a stand-in attempting to rewrite a constraints object or
     a snapshotted weights view fails closed."""
     target = PortfolioWeights({"AAPL": 0.6, "MSFT": 0.4}, WeightState.TARGET)
@@ -711,7 +711,7 @@ def test_value_objects_and_snapshot_view_reject_mutation() -> None:
 
 
 def test_root_package_lazily_exposes_weights_module() -> None:
-    """§4.1: portlearn lazily exposes weights by exactly one additional
+    """portlearn lazily exposes weights by exactly one additional
     PEP 562 branch — additive only, no eager imports."""
     for name in [
         name for name in list(sys.modules) if name == "portlearn" or name.startswith("portlearn.")

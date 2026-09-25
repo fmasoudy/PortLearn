@@ -16,7 +16,7 @@ smoke test and not evidence that any later engine, alignment, or
 experiment is correct.  Weight values are inert identifiers of
 composition, not portfolio claims.
 
-The manifest serialization floors are pinned here too: fail-closed
+The manifest serialization floors are pinned here too: unconditional
 identity, naive/date rejection, canonical sorted-key JSON bytes, and the
 exact offset-preserving round trip.  Nodes assert error classes and laws
 only, never error-message tails.
@@ -355,7 +355,7 @@ def test_accounting_result_feeds_the_evaluator() -> None:
 def test_each_wired_run_carries_a_manifest_instant() -> None:
     """Composition fact 6 (manifest instant per run): the wired run
     records one ``RunManifest`` at the fixed demonstration instant —
-    aware-datetime serialized with its numeric offset, byte-identical on
+    aware-datetime serialized with its numeric offset, identical on
     serialization, and reconstructable — and the walk is deterministic
     from the seed alone."""
     from portlearn.manifest import RunManifest
@@ -487,7 +487,7 @@ def test_manifest_serialization_is_canonical_sorted_json_bytes() -> None:
 def test_manifest_round_trip_preserves_the_exact_utc_offset() -> None:
     """Round-trip floor: ``from_json(to_json(m)) == m`` exactly —
     preserving the original +10:00 UTC offset, not merely equal
-    instants, and byte-identical on re-serialization."""
+    instants, and identical on re-serialization."""
     from portlearn.manifest import RunManifest
 
     manifest = RunManifest(**_fixed_manifest_arguments())
@@ -556,7 +556,7 @@ def test_manifest_constructor_copies_the_callers_mapping() -> None:
 
 
 # ---------------------------------------------------------------------------
-# Duplicate-key JSON floors (cure C3) — fail-closed duplicate-key
+# Duplicate-key JSON floors (cure C3) — unconditional duplicate-key
 # rejection on manifest JSON parsing.
 # ---------------------------------------------------------------------------
 
@@ -564,7 +564,7 @@ def test_manifest_constructor_copies_the_callers_mapping() -> None:
 def test_manifest_json_rejects_duplicate_top_level_keys() -> None:
     """Parse floor: JSON text with a duplicated top-level schema key
     rejects with ``ValueError`` — never silently take the last value —
-    and the schema-keys check still applies after fail-closed parsing."""
+    and the schema-keys check still applies after unconditional parsing."""
     from portlearn.manifest import RunManifest
 
     manifest = RunManifest(**_fixed_manifest_arguments())
@@ -596,7 +596,7 @@ def test_manifest_json_rejects_duplicate_nested_keys() -> None:
 
 
 def test_manifest_json_single_key_payload_still_parses_and_round_trips() -> None:
-    """Parse floor: fail-closed duplicate detection does not reject
+    """Parse floor: unconditional duplicate detection does not reject
     legitimate single-key payloads: the canonical serialization parses,
     round-trips to an equal manifest, and re-serialization is
     byte-stable."""
@@ -612,7 +612,7 @@ def test_manifest_json_rejects_duplicate_keys_case_insensitively() -> None:
     """Parse floor: duplicates that differ only by case do not evade —
     keys are compared exactly, so a case-differing duplicate is still
     a distinct key pair; this pins that the fix is exact-match
-    fail-closed, not case-folding."""
+    unconditional, not case-folding."""
     from portlearn.manifest import RunManifest
 
     manifest = RunManifest(**_fixed_manifest_arguments())
@@ -621,6 +621,6 @@ def test_manifest_json_rejects_duplicate_keys_case_insensitively() -> None:
         '"run_id":"wiring-seed-20260430","Run_Id":"EVASION"',
     )
     # "Run_Id" is a distinct key (not a schema key), so the schema-keys
-    # check rejects it — fail-closed either way.
+    # check rejects it — unconditional either way.
     with pytest.raises(ValueError):
         RunManifest.from_json(duplicated)
