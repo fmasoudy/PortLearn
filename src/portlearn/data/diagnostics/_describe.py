@@ -1,7 +1,7 @@
 """Descriptive summaries over retained records (stdlib-only block).
 
 ``describe`` is a standalone report callable: it reads one sealed
-dataset and returns a frozen, stdlib-only report of per-series sample
+dataset and returns a fixed, stdlib-only report of per-series sample
 statistics over the actually retained observations — no sentinel
 recovery, no imputation, no coercion of non-numeric value domains.
 

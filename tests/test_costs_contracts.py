@@ -1,13 +1,13 @@
 """Behavior-named conformance suite for the transaction-cost contract.
 
-These tests freeze the approved proportional-cost laws: the
+These tests freeze the proportional-cost laws: the
 convention-bound ``Proportional(rate, turnover=one_way)`` model whose
 keyword is exactly ``turnover`` and which accepts only PortLearn's two
 recognized turnover conventions (arbitrary lambdas/callables rejected
-fail-closed), the stable canonical convention identity (``"one_way"``
+unconditional), the stable canonical convention identity (``"one_way"``
 / ``"two_sided"``) carried for future experiment provenance, the cost
 fraction ``q = rate × turnover_measure(trade)`` with cost factor
-``F_cost = 1 − q`` on the fail-closed domain ``0 ≤ q < 1``, the rate
+``F_cost = 1 − q`` on the unconditional domain ``0 ≤ q < 1``, the rate
 law ``rate ≥ 0`` real finite (bool/Decimal/negative/non-finite
 rejected; ``rate = 0`` lawful frictionless), zero-trade and zero-rate
 identities, purity/reusability of the stored trade across multiple
@@ -17,7 +17,7 @@ reporting-independence (a ``two_sided`` reporting call and a
 baseline cost-to-weights separation (weights track POST_TRADE = TARGET
 exactly under nonzero cost; value track multiplied by F_cost), the
 two-trade cost-factor composition identity, and consistency with the
-frozen rebalancing laws.
+fixed rebalancing laws.
 """
 
 from __future__ import annotations
@@ -155,7 +155,7 @@ def test_two_sided_binding_charges_double_the_one_way_measure() -> None:
 
 
 # ---------------------------------------------------------------------------
-# Cost fraction q and factor F_cost; fail-closed domain 0 <= q < 1
+# Cost fraction q and factor F_cost; unconditional domain 0 <= q < 1
 # ---------------------------------------------------------------------------
 
 
@@ -188,7 +188,7 @@ def test_cost_fraction_domain_rejects_q_at_or_above_one() -> None:
 def test_cost_fraction_domain_rejects_non_finite_intermediates() -> None:
     # individually finite weights whose delta overflows: from_weights
     # itself rejects, so the non-finite turnover intermediate can never
-    # arise from a constructed trade; the domain gate remains the safety
+    # arise from a constructed trade; the domain check remains the safety
     # net for hostile q inputs.
     with pytest.raises(ValueError):
         from_weights(_pre({"A": -1.7e308}), _target({"A": 1.7e308}))
@@ -282,7 +282,7 @@ def test_post_trade_weights_equal_target_exactly_under_nonzero_cost() -> None:
     model = Proportional(rate=0.0025, turnover=one_way)
     f = model.f_cost(trade)
     assert f < 1.0  # a genuinely nonzero cost
-    executed = execute_rebalance(target, _timing())  # frozen execution law
+    executed = execute_rebalance(target, _timing())  # fixed execution law
     assert executed.state is WeightState.POST_TRADE
     assert dict(executed.weights) == dict(trade.destination.weights)
     assert trade.destination.weights == target.weights  # exactly, no renormalization
@@ -305,7 +305,7 @@ def test_baseline_separation_is_declared_simplified_convention() -> None:
 
 def test_costs_do_not_alter_frozen_timing_semantics() -> None:
     # Costing owns no execution-instant binding: costing a trade composed
-    # with the frozen execution law changes nothing about the timing.
+    # with the fixed execution law changes nothing about the timing.
     target = _target({"A": 0.6, "B": 0.4})
     timing = _timing()
     executed = execute_rebalance(target, timing)
@@ -417,7 +417,7 @@ def test_estimate_trade_cost_validates_like_from_weights() -> None:
     model = Proportional(rate=0.0025, turnover=one_way)
     # weight mappings are the protocol input: a zero-delta book is lawful
     assert model.estimate_trade_cost({"A": 0.5}, {"A": 0.5}) == 0.0
-    # non-mapping operands and unlawful weights reject fail-closed
+    # non-mapping operands and unlawful weights reject unconditionally
     for bad_pre, bad_target in (
         ("not a book", {"A": 0.5}),
         ({"A": 0.5}, "not a book"),
@@ -437,7 +437,7 @@ def test_estimate_trade_cost_is_pure_and_repeatable() -> None:
 
 
 def test_estimate_trade_cost_enforces_the_q_domain_fail_closed() -> None:
-    # a huge target move at a high rate pushes q >= 1: fail closed
+    # a huge target move at a high rate pushes q >= 1: unconditional
     model = Proportional(rate=0.9, turnover=two_sided)
     with pytest.raises(ValueError, match="q < 1"):
         model.estimate_trade_cost({}, {"A": 100.0})

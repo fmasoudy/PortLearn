@@ -86,7 +86,7 @@ DATA_PACKAGE_MODULES = [
     "portlearn.data.adapters.fred",
 ]
 
-#: The sole module where the pandas import may live (L11, §13 D9).
+#: The sole module where the pandas import may live.
 PANDAS_HOME = "portlearn.data.dataset"
 
 
@@ -164,9 +164,7 @@ def _patch_ff_network_routed(monkeypatch: pytest.MonkeyPatch) -> Any:
 
     routes = {
         "49_Industry_Portfolios_CSV.zip": _industry49_bytes(),
-        "F-F_Research_Data_Factors_daily_CSV.zip": (
-            FACTORS_DAILY_ZIP.read_bytes()
-        ),
+        "F-F_Research_Data_Factors_daily_CSV.zip": (FACTORS_DAILY_ZIP.read_bytes()),
     }
 
     def _routed(request: object, *args: object, **kwargs: object):
@@ -207,7 +205,7 @@ def _qualified_industry49(monkeypatch: pytest.MonkeyPatch) -> Any:
 
 
 # --------------------------------------------------------------------------- #
-# Floor 1 — the UNQUALIFIED load carries no availability anywhere
+# Law 1 — the UNQUALIFIED load carries no availability anywhere
 # --------------------------------------------------------------------------- #
 
 
@@ -254,7 +252,7 @@ def test_unqualified_dataset_cannot_enter_information_set(
 ) -> None:
     """Floor 2: the dataset-owned refusal raises UnqualifiedDataError (a
     TypeError) naming the qualify path; raw InformationSet construction
-    over the same records raises the frozen MissingAvailabilityError
+    over the same records raises the fixed MissingAvailabilityError
     admission law (L6)."""
     from datetime import UTC, datetime
 
@@ -280,7 +278,7 @@ def test_unqualified_dataset_cannot_enter_information_set(
 def test_observation_store_refuses_unqualified_records(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """Floor 3: the frozen isinstance fence rejects the period-key
+    """Floor 3: the fixed isinstance fence rejects the period-key
     records at store construction (L6)."""
     from portlearn.alignment import ObservationStore
 
@@ -392,26 +390,21 @@ def test_qualify_is_one_canonical_hash_pinned_redecode(
     for record in qualified.records:
         assert isinstance(record, TimedObservation)
         assert record.available_time >= record.observation_time
-    assert (
-        qualified.qualified_provenance.content_sha256
-        == PINNED_INDUSTRY49_SHA256
-    )
+    assert qualified.qualified_provenance.content_sha256 == PINNED_INDUSTRY49_SHA256
     assert qualified.source_bytes == data == _industry49_bytes()
     assert qualified.source_sha256 == _sha256(qualified.source_bytes)
     assert qualified.qualified_provenance.url == retrieval.url
     assert qualified.qualified_provenance.retrieval_instant == (
         retrieval.retrieval_instant
     )
-    assert qualified.qualified_provenance.last_modified == (
-        retrieval.last_modified
-    )
+    assert qualified.qualified_provenance.last_modified == (retrieval.last_modified)
 
     # The receiver is unchanged: qualification returns a new dataset.
     assert raw.availability_state == "UNQUALIFIED"
     assert raw.qualified_provenance is None
     assert raw.records is not qualified.records
 
-    # Mutated bytes reject through the frozen decoder's hash pin — the
+    # Mutated bytes reject through the fixed decoder's hash pin — the
     # re-decode can never adopt retrieval facts over different bytes.
     with pytest.raises(ValueError):
         ff.decode(
@@ -479,7 +472,7 @@ def test_one_step_and_two_step_qualification_are_byte_identical(
     assert _sha256(bytes(two_step.source_bytes)) == (
         _sha256(bytes(one_step.source_bytes))
     )
-    # L9: the facade fetch path begins at fetch_raw — the frozen qualified
+    # L9: the facade fetch path begins at fetch_raw — the fixed qualified
     # entry points are the independent equivalence comparator, not the
     # facade path.
     assert one_step.provider_dataset_id == two_step.provider_dataset_id
@@ -490,7 +483,7 @@ def test_one_step_and_two_step_qualification_are_byte_identical(
 def test_qualified_behavior_preserved_full_suite(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """Floor 8b: the facade's qualified output matches the frozen
+    """Floor 8b: the facade's qualified output matches the fixed
     adapter-qualified path record-for-record over the same bytes (L9:
     the qualified decoders are the independent equivalence comparator)."""
     from datetime import timedelta as _td
@@ -514,13 +507,11 @@ def test_qualified_behavior_preserved_full_suite(
     assert list(ds.records) == timed
     assert ds.units == provenance.units
     assert ds.frequency == provenance.frequency
-    assert ds.qualified_provenance.content_sha256 == (
-        provenance.content_sha256
-    )
+    assert ds.qualified_provenance.content_sha256 == (provenance.content_sha256)
 
 
 # --------------------------------------------------------------------------- #
-# Floor 9 (§8 floor 10) — forbidden mixed states unrepresentable
+# Law 9 — forbidden mixed states unrepresentable
 # --------------------------------------------------------------------------- #
 
 
@@ -528,7 +519,7 @@ def test_forbidden_mixed_states_unrepresentable(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """Floor 10: every L5 forbidden mixed state rejects at the public
-    constructors (fail-closed validation)."""
+    constructors (unconditional validation)."""
     import portlearn as pl
 
     _patch_ff_network(monkeypatch, _industry49_bytes())
@@ -543,9 +534,7 @@ def test_forbidden_mixed_states_unrepresentable(
     with pytest.raises(ValueError):
         PeriodKeyObservation(series_id="FF/Agric", period_key="", value=1.0)
     with pytest.raises((TypeError, ValueError)):
-        PeriodKeyObservation(
-            series_id="FF/Agric", period_key="202301", value=object()
-        )
+        PeriodKeyObservation(series_id="FF/Agric", period_key="202301", value=object())
     assert not hasattr(record, "observation_time")
     assert not hasattr(record, "available_time")
 
@@ -574,7 +563,7 @@ def test_forbidden_mixed_states_unrepresentable(
 
 
 # --------------------------------------------------------------------------- #
-# Floor 10 (§8 floor 11) — to_pandas is normal core interoperability
+# Law 10 — to_pandas is normal core interoperability
 # --------------------------------------------------------------------------- #
 
 
@@ -583,8 +572,7 @@ def test_to_pandas_is_normal_core_interoperability(
 ) -> None:
     """Floor 11: both states convert with exactly the L5 pinned column
     sets; pandas is a normal core dependency here (not optional, not
-    guarded) and lives at module scope in exactly one module (L11,
-    §13 D9, tooth W7/W11)."""
+    guarded) and lives at module scope in exactly one module (single-module law)."""
     import pandas as pd
 
     _patch_ff_network(monkeypatch, _industry49_bytes())
@@ -655,7 +643,7 @@ def test_to_pandas_is_normal_core_interoperability(
 
 
 # --------------------------------------------------------------------------- #
-# Floor 11 (§8 floor 12) — alias selection is frequency-scoped, versioned
+# Law 11 — alias selection is frequency-scoped, versioned
 # --------------------------------------------------------------------------- #
 
 
@@ -705,7 +693,7 @@ def test_alias_frequency_is_selector_only_and_versioned(
 
 
 # --------------------------------------------------------------------------- #
-# Floor 12 (§8 floor 13) — FRED CURRENT_SNAPSHOT carried, never invented
+# Law 12 — FRED CURRENT_SNAPSHOT carried, never invented
 # --------------------------------------------------------------------------- #
 
 
@@ -736,7 +724,7 @@ def test_fred_unqualified_carries_current_snapshot_limitation(
 
 
 # --------------------------------------------------------------------------- #
-# Floor 13 (§8 floor 14) — no default availability constructed anywhere
+# Law 13 — no default availability constructed anywhere
 # --------------------------------------------------------------------------- #
 
 
@@ -752,9 +740,7 @@ def test_no_default_availability_constructs_anywhere() -> None:
         "AvailabilityPolicy.explicit_column",
     }
     for source in FACADE_SOURCES + ADAPTER_SOURCES:
-        assert source.is_file(), (
-            f"the data-package source is missing: {source}"
-        )
+        assert source.is_file(), f"the data-package source is missing: {source}"
         text = source.read_text()
         tree = ast.parse(text)
         for node in ast.walk(tree):
@@ -767,16 +753,14 @@ def test_no_default_availability_constructs_anywhere() -> None:
                 )
             if isinstance(node, ast.ImportFrom):
                 targets = {alias.name for alias in node.names}
-                assert not targets & {
-                    "AvailabilityPolicy"
-                }, (
+                assert not targets & {"AvailabilityPolicy"}, (
                     f"{source.name} imports AvailabilityPolicy — no "
                     "default availability may be constructed"
                 )
 
 
 # --------------------------------------------------------------------------- #
-# Floor 14 (§8 floor 15) — hash contract and immutable retrieval params
+# Law 14 — hash contract and immutable retrieval params
 # --------------------------------------------------------------------------- #
 
 
@@ -784,7 +768,7 @@ def test_researchdataset_hash_contract_and_immutable_retrieval_params(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """Floor 15: value equality over all fields; hash derives solely
-    from the frozen identity tuple (L8); no unhashable provenance field
+    from the fixed identity tuple (L8); no unhashable provenance field
     can break hashing; FRED request_params is canonically immutable."""
     import portlearn as pl
 
@@ -831,7 +815,7 @@ def test_researchdataset_hash_contract_and_immutable_retrieval_params(
 
 
 # --------------------------------------------------------------------------- #
-# Floor 17 — the undeclared top-level adapter namespace is absent
+# Law 17 — the undeclared top-level adapter namespace is absent
 # --------------------------------------------------------------------------- #
 
 
@@ -852,14 +836,14 @@ _UNDECLARED_TOP_LEVEL_NAMESPACE_PROBE = (
     "print(\n"
     "    json.dumps(\n"
     "        {\n"
-    "            \"portlearn.adapters\": absent(\"portlearn.adapters\"),\n"
-    "            \"portlearn.adapters.ff\": absent(\n"
-    "                \"portlearn.adapters.ff\"\n"
+    '            "portlearn.adapters": absent("portlearn.adapters"),\n'
+    '            "portlearn.adapters.ff": absent(\n'
+    '                "portlearn.adapters.ff"\n'
     "            ),\n"
-    "            \"portlearn.adapters.fred\": absent(\n"
-    "                \"portlearn.adapters.fred\"\n"
+    '            "portlearn.adapters.fred": absent(\n'
+    '                "portlearn.adapters.fred"\n'
     "            ),\n"
-    "            \"root adapters attribute\": hasattr(portlearn, \"adapters\"),\n"
+    '            "root adapters attribute": hasattr(portlearn, "adapters"),\n'
     "        }\n"
     "    )\n"
     ")\n"
@@ -870,7 +854,7 @@ def _undeclared_top_level_namespace_state() -> dict[str, Any]:
     """Probe the undeclared top-level adapter namespace in a fresh
     interpreter.
 
-    The oracle runs out-of-process (the Floor 19 probe pattern) so it
+    The reference runs out-of-process (the Floor 19 probe pattern) so it
     needs no in-process ``sys.modules`` purge: purging and reimporting
     ``portlearn*`` inside the pytest interpreter re-executes package
     modules and drifts class identity for every later test — the
@@ -919,7 +903,7 @@ def test_undeclared_top_level_adapter_namespace_is_absent() -> None:
 
 
 # --------------------------------------------------------------------------- #
-# Floor 18 — no optional pandas machinery survives
+# Law 18 — no optional pandas machinery survives
 # --------------------------------------------------------------------------- #
 
 
@@ -932,11 +916,11 @@ def _requirement_name(entry: str) -> str:
 
 
 def test_no_optional_pandas_machinery_survives() -> None:
-    """Floor 18: pandas is core — the optional table stays exactly the
+    """Floor 18: pandas is core — the optional table is exactly the
     parquet and plot extras, the installed distribution carries pandas
-    as an unconditional ``Requires-Dist`` entry, and no guarded-import
-    symbol or pandas-extra message survives in the package (L11, tooth
-    W11)."""
+    and SciPy as unconditional ``Requires-Dist`` entries,
+    and no guarded-import symbol or pandas-extra message survives in
+    the package (L11, tooth W11)."""
     with PYPROJECT_PATH.open("rb") as handle:
         pyproject = tomllib.load(handle)
     optional = pyproject.get("project", {}).get("optional-dependencies", {})
@@ -974,18 +958,14 @@ def test_no_optional_pandas_machinery_survives() -> None:
 
 
 # --------------------------------------------------------------------------- #
-# Floor 19 — the import DAG is acyclic and laziness holds
+# Law 19 — the import DAG is acyclic and laziness holds
 # --------------------------------------------------------------------------- #
 
 
 def _fresh_registry(statement: str) -> list[str]:
     """Execute one import statement in a fresh interpreter and return
     the resulting ``sys.modules`` snapshot (offline, network-free)."""
-    script = (
-        "import json, sys\n"
-        f"{statement}\n"
-        "print(json.dumps(sorted(sys.modules)))\n"
-    )
+    script = f"import json, sys\n{statement}\nprint(json.dumps(sorted(sys.modules)))\n"
     probe = subprocess.run(
         [sys.executable, "-c", script],
         capture_output=True,
@@ -1001,9 +981,7 @@ def _fresh_registry(statement: str) -> list[str]:
 
 
 def _portlearn_side(registry: list[str]) -> list[str]:
-    return [
-        name for name in registry if name.split(".", 1)[0] == "portlearn"
-    ]
+    return [name for name in registry if name.split(".", 1)[0] == "portlearn"]
 
 
 def test_import_dag_is_acyclic_and_laziness_holds() -> None:
@@ -1011,9 +989,9 @@ def test_import_dag_is_acyclic_and_laziness_holds() -> None:
     lazy data package, no cross-facade edge, no upward adapter edge, and
     pandas triggered by ``dataset`` alone (tooth W12)."""
     # (i) the root stays lazy: a fresh import registers the root only.
-    assert _portlearn_side(_fresh_registry("import portlearn")) == [
-        "portlearn"
-    ], "a fresh root import must register exactly the root module"
+    assert _portlearn_side(_fresh_registry("import portlearn")) == ["portlearn"], (
+        "a fresh root import must register exactly the root module"
+    )
 
     # (ii) the data package registers itself and no provider submodule.
     assert _portlearn_side(_fresh_registry("import portlearn.data")) == [
@@ -1077,7 +1055,7 @@ def test_import_dag_is_acyclic_and_laziness_holds() -> None:
 
 
 # --------------------------------------------------------------------------- #
-# Floor 21 — public constructors suffice; no privileged construction
+# Law 21 — public constructors suffice; no privileged construction
 # --------------------------------------------------------------------------- #
 
 
@@ -1111,7 +1089,7 @@ def test_public_constructors_suffice_no_privileged_construction(
 
     # The facade modules construct datasets through exactly the public
     # contracts: no local dataset redefinition, no direct record
-    # fabrication bypassing the frozen decoders and the canonical
+    # fabrication bypassing the fixed decoders and the canonical
     # constructor any external integrator can call.
     for source in (
         PACKAGE_ROOT / "data" / "fama_french.py",
@@ -1125,12 +1103,12 @@ def test_public_constructors_suffice_no_privileged_construction(
         )
         assert "TimedObservation(" not in text, (
             f"{source.name}: the facade may not fabricate qualified "
-            "records — record construction belongs to the frozen "
+            "records — record construction belongs to the fixed "
             "decoders behind the public constructor"
         )
         assert "PeriodKeyObservation(" not in text, (
             f"{source.name}: the facade may not fabricate unqualified "
-            "records — record construction belongs to the frozen "
+            "records — record construction belongs to the fixed "
             "decoders behind the public constructor"
         )
 
@@ -1151,9 +1129,7 @@ def _kernel_dataset(provider: Any, **overrides: Any) -> Any:
     from portlearn.data.dataset import UnqualifiedDataset
 
     data = _industry49_bytes()
-    records, provenance = ff_adapter.decode_unqualified(
-        data, "industry49_monthly_csv"
-    )
+    records, provenance = ff_adapter.decode_unqualified(data, "industry49_monthly_csv")
     overrides.setdefault("provider", provider)
     overrides.setdefault("name", "industry49")
     overrides.setdefault("provider_dataset_id", "industry49_monthly_csv")
@@ -1187,7 +1163,7 @@ def test_dataset_kernel_accepts_any_opaque_provider_id() -> None:
 def test_dataset_kernel_rejects_blank_and_non_string_provider_ids(
     bad_provider: Any,
 ) -> None:
-    """Blank and non-string provider ids reject fail-closed at
+    """Blank and non-string provider ids reject unconditionally at
     construction; every non-blank string is valid."""
     with pytest.raises(ValueError):
         _kernel_dataset(bad_provider)
@@ -1242,9 +1218,7 @@ def test_data_mode_delegates_to_the_active_typed_provenance(
     assert fred_ds.data_mode == "CURRENT_SNAPSHOT"
     assert fred_ds.data_mode == fred_ds.retrieval_provenance.data_mode
     fred_qualified = fred_ds.qualify(availability=_policy(), tzinfo=TZ)
-    assert fred_qualified.data_mode == (
-        fred_qualified.qualified_provenance.data_mode
-    )
+    assert fred_qualified.data_mode == (fred_qualified.qualified_provenance.data_mode)
 
     _patch_ff_network(monkeypatch, _industry49_bytes())
     ff_ds = _load_industry49()
@@ -1252,7 +1226,7 @@ def test_data_mode_delegates_to_the_active_typed_provenance(
 
 
 # --------------------------------------------------------------------------- #
-# Floor 22 — relocated adapters preserve qualified behavior and output
+# Law 22 — relocated adapters preserve qualified behavior and output
 # --------------------------------------------------------------------------- #
 
 
@@ -1274,11 +1248,11 @@ def test_relocated_adapters_preserve_qualified_behavior_and_output(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """Floor 22: qualified behavior and output survive the relocation —
-    canonical ``adapter_identity`` labels at the new namespace (§13 D5),
-    the frozen
+    canonical ``adapter_identity`` labels at the new namespace,
+    the fixed
     qualified decode at the new namespace over the pinned fixture, and
     the canonical smoke example executing unchanged apart from its
-    single relocated import line (§5 item 16)."""
+    single relocated import line."""
     ff = _ff_module()
     fred = _fred_module()
 

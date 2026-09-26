@@ -4,7 +4,7 @@ This module defines the timing semantics:
 
 - every financial time is a timezone-aware instant, compared as instants
   (wall clock and zone name never affect ordering or equality);
-- naive datetimes and ``datetime.date`` inputs are rejected fail-closed —
+- naive datetimes and ``datetime.date`` inputs are rejected strict —
   no default zone is ever assumed and no date-to-midnight coercion is
   ever performed, because silent coercion is the classic daily-data
   look-ahead leakage vector;
@@ -19,12 +19,12 @@ This module defines the timing semantics:
   length;
 - the admission law: an item of information may enter the information
   set for a decision at ``decision_time`` iff its ``available_time`` is
-  at or before ``decision_time``, evaluated on aware instants.  The gate
+  at or before ``decision_time``, evaluated on aware instants.  The safety check
   is the decision instant only, never the execution instant, so
   information arriving in the decision-to-execution gap is look-ahead
   leakage and is rejected.
 
-This module defines four fail-closed errors:
+This module defines four strict errors:
 ``NaiveTimestampError``, ``InvalidChronologyError``,
 ``FutureInformationError``, and ``MissingAvailabilityError``.  It is
 stdlib-only and imports nothing from ``portlearn.observations``, so no
@@ -58,7 +58,7 @@ __all__ = [
 
 
 # --------------------------------------------------------------------------- #
-# Fail-closed error taxonomy — the timing-owned arm
+# Rejection taxonomy — the timing-owned arm
 # --------------------------------------------------------------------------- #
 
 
@@ -110,7 +110,7 @@ class MissingAvailabilityError(Exception):
 
 
 def _require_aware_instant(value: Any, field_name: str) -> datetime:
-    """Return ``value`` as a timezone-aware instant, or fail closed.
+    """Return ``value`` as a timezone-aware instant, or unconditional.
 
     Naive datetimes, ``datetime.date`` inputs, and non-instant inputs
     are all rejected with ``NaiveTimestampError``: no default timezone
@@ -139,7 +139,7 @@ def _require_aware_instant(value: Any, field_name: str) -> datetime:
         f"{field_name} must be a timezone-aware datetime instant carrying "
         f"an explicit UTC offset; got {type(value).__name__}: {value!r}. "
         "Financial times are compared as instants, so an input that is not "
-        "an aware instant is rejected fail-closed."
+        "an aware instant is rejected unconditionally."
     )
 
 
@@ -181,7 +181,7 @@ def _item_series_id(item: Any) -> Any:
 def to_instant(value: Any, field_name: str = "timestamp") -> datetime:
     """Return the UTC datetime denoting ``value``'s true instant.
 
-    ``value`` is validated fail-closed exactly as
+    ``value`` is validated strict exactly as
     ``_require_aware_instant`` validates it, then normalized through
     ``astimezone(timezone.utc)``, which resolves ``fold`` through the
     zone's ``utcoffset``: the two Melbourne 2026-04-05 02:30
@@ -304,12 +304,12 @@ def is_available_for_decision(item: Any, decision_time: Any) -> bool:
 
 
 def require_available_for_decision(item: Any, decision_time: Any) -> None:
-    """Admission gate: raise on look-ahead, return ``None`` on admission.
+    """Admission safety check: raise on look-ahead, return ``None`` on admission.
 
     Raises ``FutureInformationError`` when ``item.available_time`` is
     after ``decision_time`` — including information arriving inside the
     decision-to-execution gap, which satisfies no admission verdict
-    because the gate is the decision instant only, never the execution
+    because the safety check is the decision instant only, never the execution
     instant.  Malformed inputs raise their typed
     errors exactly as the boolean query does.
     """

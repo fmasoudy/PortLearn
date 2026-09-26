@@ -3,11 +3,11 @@
 This module defines the portfolio-weight contract: the closed
 three-member ``WeightState`` vocabulary, the immutable snapshotted
 ``PortfolioWeights`` value object, the standing ``WeightConstraints``
-declarations with fail-closed well-formedness and scalar declaration
+declarations with strict well-formedness and scalar declaration
 coherence, the pure exposure functions over any valid weight mapping,
 and the single TARGET-only validator ``require_valid_target``.
 
-The error surface is ``ValueError`` only, with precise fail-closed
+The error surface is ``ValueError`` only, with precise strict
 messages; this module owns no instants and reuses no timing or
 observations errors. The module is stdlib-only by design.
 """
@@ -57,7 +57,7 @@ def _require_identifier(key: object) -> None:
 def _checked_float(value: float, name: str) -> float:
     """Checked real→float conversion: an int beyond the float range
     raises ``OverflowError`` from ``float()`` — mapped here onto the
-    fail-closed finiteness check so the module error surface stays
+    unconditional finiteness check so the module error surface stays
     ``ValueError`` only. No clipping, no normalization: an out-of-range
     real is rejected, never rescaled."""
     try:
@@ -86,7 +86,7 @@ def _finite_fsum(values: list[float], name: str) -> float:
     """``math.fsum`` guarded so the aggregation itself can never leak
     ``OverflowError`` or return a non-finite total: individually finite
     values whose exact sum overflows the float range are rejected
-    fail-closed with ``ValueError`` (ValueError-only error surface)."""
+    unconditionally with ``ValueError`` (ValueError-only error surface)."""
     try:
         total = math.fsum(values)
     except OverflowError:
@@ -101,7 +101,7 @@ def gross_exposure(weights: Mapping[str, float]) -> float:
 
     A pure module-level function over any mapping, enforcing the same
     valid-weight-mapping definition as ``PortfolioWeights`` construction
-    (identifier and weight checks) fail-closed, accumulated with
+    (identifier and weight checks) strict, accumulated with
     ``math.fsum`` for exact, order-independent summation. It implies no
     leverage limit by existing: permissible exposure limits exist only
     where declared (``WeightConstraints``).
@@ -121,7 +121,7 @@ def net_exposure(weights: Mapping[str, float]) -> float:
     A pure module-level function over any mapping (so a raw
     ``PortfolioDecision.target_weights`` can be measured without
     constructing a ``PortfolioWeights``), enforcing the same
-    valid-weight-mapping definition fail-closed, accumulated with
+    valid-weight-mapping definition strict, accumulated with
     ``math.fsum``.
     """
     for key, value in weights.items():
@@ -138,11 +138,11 @@ class PortfolioWeights:
 
     Public shape: constructor ``PortfolioWeights(weights, state)``;
     public read attribute ``weights`` — the immutable mapping view
-    snapshotted at initialization, so later mutation of the source
-    mapping cannot change the object and mutation of the view itself
+    snapshotted at initialization, so later modify of the source
+    mapping cannot change the object and modify of the view itself
     raises; public read attribute ``state: WeightState`` holding an
     actual enum member (a string, an int, ``None``, or a bool is
-    rejected with no coercion); ``assets: frozenset[str]`` returning
+    rejected with no coercion); ``assets: immutableset[str]`` returning
     exactly the explicitly declared identifiers, explicit zeros
     included; and ``weight_of(identifier) -> float`` returning exactly
     ``0.0`` for an identifier absent from ``assets``. An immutable
@@ -228,7 +228,7 @@ class WeightConstraints:
     ``TARGET`` — a declaration, not proof of full-wealth accounting),
     and ``budget_tolerance`` (default ``1e-9``, caller-settable).
 
-    Well-formedness is fail-closed at construction, and declaration
+    Well-formedness is strict at construction, and declaration
     coherence rejects a declaration only when no possible target net
     exposure can lie simultaneously within the budget interval
     ``[budget − budget_tolerance, budget + budget_tolerance]`` and the
@@ -327,7 +327,7 @@ def require_valid_target(
 
     The single validation entry, TARGET-only by contract: an input whose
     state is not ``WeightState.TARGET`` raises ``ValueError`` on the
-    state gate — ``PRE_TRADE`` and ``POST_TRADE`` objects are never
+    state safety check — ``PRE_TRADE`` and ``POST_TRADE`` objects are never
     passed through this validator and receive construction-time
     representational validity only. For a ``TARGET`` this validates the
     budget requirement ``|net_exposure − budget| <= budget_tolerance``,

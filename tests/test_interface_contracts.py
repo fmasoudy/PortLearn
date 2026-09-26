@@ -7,7 +7,7 @@ four runtime-checkable structural contracts, AccountingResult, and the
 three validators.  Coverage is organized as a composition matrix over
 synthetic collaborators, a rejection matrix of malformed inputs and
 contract violations, and structural and behavioral pins on the public
-surface — the exact exported-name set, the frozen five-time vocabulary,
+surface — the exact exported-name set, the fixed five-time vocabulary,
 delegation of admission to the timing law, stdlib-and-package-only
 imports, and error-class ownership.
 """

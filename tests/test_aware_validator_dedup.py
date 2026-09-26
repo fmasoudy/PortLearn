@@ -149,7 +149,7 @@ def test_aware_instant_round_trips_from_every_binding() -> None:
 
 
 # ---------------------------------------------------------------------------
-# Fail-closed behavior preserved through every module's public surfaces
+# Rejection behavior preserved through every module's public surfaces
 # ---------------------------------------------------------------------------
 
 
@@ -236,7 +236,7 @@ def test_rejection_messages_are_identical_across_all_three_bindings(
         messages.add(str(excinfo.value))
     assert len(messages) == 1, (
         "the aware-instant validator's rejection wording must be "
-        "byte-identical across timing, observations, and interfaces — "
+        "identical across timing, observations, and interfaces — "
         f"one canonical wording owned by timing.py; got {len(messages)} "
         "distinct messages"
     )

@@ -19,7 +19,7 @@ The raw load is UNQUALIFIED — no availability anywhere, the
 qualified one-step load requires the indivisible evidence pair
 ``(availability, tzinfo)`` — both or neither — and is exactly the raw
 load plus an immediate ``qualify(...)`` over the same retained bytes,
-so one-step and two-step are byte-identical by construction.  No
+so one-step and two-step are identical by construction.  No
 default availability policy and no default zone is ever supplied.
 
 Import graph: this facade imports the dataset container and its own
@@ -52,7 +52,7 @@ def _canonical_frequency(frequency: Any) -> str:
         raise ValueError(
             f"frequency {frequency!r} is outside the closed provider set "
             f"{fred.SUPPORTED_FREQUENCIES!r}; unsupported frequencies "
-            "reject fail-closed — they have no frozen period mapping."
+            "reject unconditionally — they have no fixed period mapping."
         )
     return canonical
 
@@ -116,7 +116,7 @@ def load(
             "qualification takes the indivisible evidence pair: pass "
             "BOTH availability= (an explicit AvailabilityPolicy "
             "declaration) and tzinfo= (an aware zone) together — "
-            "one-sided evidence is refused fail-closed, because a "
+            "one-sided evidence is refused unconditionally, because a "
             "lone policy or a lone zone each smuggle a silent "
             "decision-time assumption. No default availability and "
             "no default zone is ever supplied."
@@ -127,7 +127,7 @@ def load(
                 "retrieval provenance and metadata bytes may be supplied "
                 "only together with the exact observation bytes they "
                 "describe (data=...): retrieval facts without bytes name "
-                "a retrieval that cannot be verified, fail-closed."
+                "a retrieval that cannot be verified, and reject."
             )
         data, retrieval = fred.fetch_raw(series_id, api_key)
         metadata_bytes = _fetch_metadata(series_id, api_key)
@@ -145,7 +145,7 @@ def load(
                 "retrieval provenance hash pin mismatch: the supplied "
                 "bytes are not the bytes the retrieval recorded "
                 f"({retrieval.content_sha256!r} pinned); the load "
-                "rejects fail-closed."
+                "rejects unconditionally."
             )
     records, provenance = fred.decode_unqualified(
         data,

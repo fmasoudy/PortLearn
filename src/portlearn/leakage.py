@@ -12,7 +12,7 @@ Design laws honoured here:
 * ``FROZEN_CONTRACT_ERRORS`` is exactly the six module-qualified
   contract error classes — a battery can never expect a foreign error
   class, and every expected error must be one of these six.
-* Admission is fail-closed: a case with a blank or non-string name, a
+* Admission is strict: a case with a blank or non-string name, a
   non-callable attempt, or an expected error outside the supported
   contract error classes is rejected before anything runs.
 * Totality: every admitted case produces exactly one finding, whatever
@@ -87,7 +87,7 @@ class LeakageCase:
     scenario (for example, admitting a forecast whose feature vintage
     postdates the decision instant). ``expected_error`` must be exactly
     one of :data:`FROZEN_CONTRACT_ERRORS` — never a foreign class — and
-    admission is fail-closed with ``ValueError`` for a blank or
+    admission is strict with ``ValueError`` for a blank or
     non-string ``name``, a non-callable ``attempt``, or an expected
     error outside the supported contract error classes (including
     non-class inputs).
@@ -236,7 +236,7 @@ class LeakageReport:
 def run_leakage_cases(cases: Sequence[LeakageCase]) -> LeakageReport:
     """Execute ``cases`` totally, reporting every outcome.
 
-    The battery is fail-closed on admission — it must be a non-empty
+    The battery is strict on admission — it must be a non-empty
     sequence of :class:`LeakageCase` (an empty battery proves nothing
     and is rejected with ``ValueError``). Every admitted case then
     produces exactly one finding:

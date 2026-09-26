@@ -70,7 +70,7 @@ network.
   seasonal_adjustment + attribution note) proving units/frequency ride as
   provenance metadata, never converted.
 - `obs_unknown_series.json` — provider error payload for an unknown
-  series id (L10 fail-closed path).
+  series id (L10 unconditional path).
 
 Adapter version at pin time: `portlearn.data.adapters.fred` 1 (mode fence and
-catalog frozen; see module docstring).
+catalog fixed; see module docstring).

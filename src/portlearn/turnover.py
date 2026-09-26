@@ -21,7 +21,7 @@ weight of exactly ``Σ|Δw| = 2`` — one whole portfolio out, another
 whole portfolio in (illustrated by ``{"A": 1.0}`` → ``{"B": 1.0}``).
 Turnover is exactly ``0.0`` iff every ``Δwᵢ = 0.0`` exactly.
 
-Both functions are pure with respect to the trade: they never mutate
+Both functions are pure with respect to the trade: they never modify
 or consume it, and repeated evaluation reproduces the same result.
 The error surface is ``ValueError`` only; numerics follow the
 checked-real / guarded-aggregation discipline (``math.fsum``, no
@@ -38,7 +38,7 @@ __all__ = ["one_way", "two_sided"]
 
 
 def _absolute_delta_total(trade: WeightTrade) -> float:
-    """``Σᵢ|Δwᵢ|`` under the guarded exact-sum discipline, fail-closed
+    """``Σᵢ|Δwᵢ|`` under the guarded exact-sum discipline, unconditional
     on a non-finite intermediate or total (ValueError-only surface)."""
     if not isinstance(trade, WeightTrade):
         raise ValueError(  # noqa: TRY004 — ValueError-only surface is the error law

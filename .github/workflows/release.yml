@@ -8,7 +8,7 @@
 # It validates every consistency rule FIRST and fails closed on any
 # mismatch, leaving no partial state beyond the failed run log. It never
 # deletes, moves, or overwrites an existing tag or release. Existence
-# queries fail closed the same way: a query whose answer cannot be
+# queries unconditional the same way: a query whose answer cannot be
 # confirmed (transport error, auth error, unexpected HTTP status)
 # aborts the run rather than being read as "absent". Runs are also
 # serialized in a 'public-release' concurrency group (no cancel), so
@@ -77,7 +77,7 @@ jobs:
           # final release creation, which names its token and
           # repository explicitly.
           persist-credentials: false
-      - name: Fail closed unless the target commit is the current origin main head
+      - name: abort unless the target commit is the current origin main head
         run: |
           set -euo pipefail
           git fetch --no-tags origin "+refs/heads/main:refs/remotes/origin/main"
@@ -88,7 +88,7 @@ jobs:
             echo "::error::target ${PL_TARGET_SHA} is not the current origin/main head (${main_head}); a stale or off-main commit is never tagged"
             exit 1
           fi
-      - name: Fail closed if the tag already exists locally or on the remote
+      - name: Abort if the tag already exists locally or on the remote
         run: |
           set -euo pipefail
           if [ -n "$(git tag --list "$PL_TAG_NAME")" ]; then
@@ -109,7 +109,7 @@ jobs:
             echo "::error::remote tag ${PL_TAG_NAME} already exists; existing tags are never overwritten"
             exit 1
           fi
-      - name: Fail closed if the GitHub Release already exists
+      - name: Abort if the GitHub Release already exists
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
@@ -358,7 +358,7 @@ jobs:
           def main(argv: list[str] | None = None) -> int:
               """Run validation from command-line arguments; 0 on success."""
               parser = argparse.ArgumentParser(
-                  description="Validate a public release request (fail-closed)."
+                  description="Validate a public release request (unconditional)."
               )
               parser.add_argument("--version", required=True)
               parser.add_argument("--tag-name", required=True)
@@ -404,7 +404,7 @@ jobs:
         run: |
           set -euo pipefail
           git tag --list "v*" | sort > "${RUNNER_TEMP}/existing_tags.txt"
-      - name: Fail closed on any release-consistency mismatch
+      - name: Abort on any release-consistency mismatch
         run: |
           set -euo pipefail
           uv sync --locked

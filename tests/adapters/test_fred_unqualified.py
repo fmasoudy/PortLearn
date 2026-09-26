@@ -118,7 +118,7 @@ def test_fetch_raw_sends_explicit_key_and_sanitizes_all_provenance(
 def test_fetch_raw_rejects_missing_key_before_any_network(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """A missing or empty key rejects fail-closed before any socket."""
+    """A missing or empty key rejects unconditionally before any socket."""
     fred = _fred()
 
     def _explode(*args: object, **kwargs: object) -> None:
@@ -204,7 +204,7 @@ def test_decode_unqualified_hash_pin_rejects_mutated_bytes() -> None:
 
 
 def test_retrieval_provenance_field_set_is_pinned_and_request_params_frozen() -> None:
-    """The FRED retrieval field set is exactly the frozen L3 list; the
+    """The FRED retrieval field set is exactly the fixed L3 list; the
     object is hashable with canonical immutable ``request_params`` (L3,
     D6)."""
     fred = _fred()
@@ -242,7 +242,7 @@ def test_retrieval_provenance_field_set_is_pinned_and_request_params_frozen() ->
 def test_current_snapshot_limitation_is_carried_not_invented() -> None:
     """CURRENT_SNAPSHOT is the only data mode this provider surface
     yields: the retrieval-only path never invents a vintage or a
-    pseudo-lag (L3, §13)."""
+    pseudo-lag."""
     fred = _fred()
     records, provenance = fred.decode_unqualified(_obs_bytes(), SERIES)
     assert provenance.data_mode == fred.CURRENT_SNAPSHOT

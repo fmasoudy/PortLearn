@@ -1,4 +1,4 @@
-"""Proportional transaction costs, convention-bound and fail-closed.
+"""Proportional transaction costs, convention-bound and strict.
 
 This module defines the proportional cost model: the
 standard linear cost model ``Proportional(rate, turnover=...)`` bound
@@ -16,7 +16,7 @@ The laws, in summary:
   PortLearn's two recognized turnover conventions,
   ``portlearn.turnover.one_way`` and
   ``portlearn.turnover.two_sided``; arbitrary lambdas or unknown
-  callables reject fail-closed. Internally the model preserves a
+  callables reject invalid input. Internally the model preserves a
   stable canonical identity — ``"one_way"`` / ``"two_sided"`` — so
   future experiment provenance (e.g. YAML ``costs: {model:
   proportional, rate: 0.0025, turnover: one_way}``) can represent the
@@ -25,7 +25,7 @@ The laws, in summary:
   the only selectable measures.
 - **Cost fraction and factor.** ``q = rate ×
   selected_turnover_measure(trade)`` and ``F_cost = 1 − q``; the
-  domain is ``0 ≤ q < 1``, enforced fail-closed on non-finite,
+  domain is ``0 ≤ q < 1``, enforced strict on non-finite,
   negative, or ``q ≥ 1`` inputs (``F_cost = 0`` or negative is not a
   lawful portfolio state). The domain check is the safety net
   especially for leveraged/short books, whose two-sided turnover may
@@ -47,7 +47,7 @@ The laws, in summary:
   factor is ``F_cost,total = Π_k F_cost,k``, and where a growth basis
   is needed ``G_after_cost = G_before_cost × F_cost,total``; no
   ``r_net`` return-record form is defined here. Models are pure with
-  respect to the trade: evaluating ``q``/``f_cost`` never mutates or
+  respect to the trade: evaluating ``q``/``f_cost`` never modify or
   consumes it, so one stored trade can be evaluated under many cost
   models (rates 0.0010/0.0025/0.0050, say) without rerunning the
   optimizer.
@@ -103,7 +103,7 @@ def _require_rate(value: object) -> float:
 
 def _require_recognized_convention(value: object) -> tuple[str, Any]:
     """Only PortLearn's two named turnover conventions are selectable;
-    arbitrary lambdas/callables/scalars reject fail-closed."""
+    arbitrary lambdas/callables/scalars reject unconditionally."""
     for identity, measure in _RECOGNIZED_CONVENTIONS.items():
         if value is measure:
             return identity, measure
@@ -118,7 +118,7 @@ def _require_recognized_convention(value: object) -> tuple[str, Any]:
 
 def _require_weight_mapping(value: object, role: str) -> Mapping[str, float]:
     """A weight book operand must be a mapping of identifiers to
-    weights; anything else rejects fail-closed on the ValueError-only
+    weights; anything else rejects unconditionally on the ValueError-only
     surface before book construction is attempted."""
     if not isinstance(value, Mapping):
         raise ValueError(  # noqa: TRY004 — ValueError-only surface is the error law
@@ -185,7 +185,7 @@ class Proportional:
     def q(self, trade: WeightTrade) -> float:
         """The cost fraction ``q = rate × turnover_measure(trade)``.
 
-        Fail-closed on the domain ``0 ≤ q < 1``: a non-finite,
+        Domain-checked ``0 ≤ q < 1``: a non-finite,
         negative, or ``q ≥ 1`` result rejects — ``F_cost = 0`` or
         negative is not a lawful portfolio state, and leveraged books
         can reach the boundary even at moderate rates. Pure with
@@ -215,7 +215,7 @@ class Proportional:
 
     def f_cost(self, trade: WeightTrade) -> float:
         """The cost factor ``F_cost = 1 − q`` on the domain ``0 <
-        F_cost ≤ 1``; identical fail-closed domain enforcement."""
+        F_cost ≤ 1``; identical domain checks."""
         return 1.0 - self.q(trade)
 
     def estimate_trade_cost(
@@ -231,7 +231,7 @@ class Proportional:
         and ``TARGET``, deltas over the union of assets) and returns
         ``q`` of that trade — the bound convention is applied through
         the canonical path, with no turnover arithmetic duplicated
-        here. Fail-closed domain enforcement is therefore identical
+        here. Domain checks are therefore identical
         to ``q``'s.
         """
         trade = from_weights(
@@ -253,7 +253,7 @@ class Proportional:
         )
 
     def _checked_measure(self, trade: WeightTrade) -> float:
-        """The bound convention evaluated on the trade, fail-closed on
+        """The bound convention evaluated on the trade, unconditional on
         non-finite turnover intermediates (ValueError-only surface)."""
         if not isinstance(trade, WeightTrade):
             raise ValueError(  # noqa: TRY004 — ValueError-only surface is the error law

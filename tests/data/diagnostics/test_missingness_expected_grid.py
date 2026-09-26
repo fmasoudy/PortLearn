@@ -1,7 +1,7 @@
 """Behavior floors for ``missingness``: the explicit caller-supplied
 expected observation grid (required, exact state-native keys), exact-key
 comparison only, duplicate observed/expected keys failing closed, the
-frozen identifiability field names, and disclosed denominator/basis."""
+fixed identifiability field names, and disclosed denominator/basis."""
 
 from __future__ import annotations
 
@@ -25,7 +25,7 @@ from _synthetic import (
 
 MONTH_GRID = [("alpha", month_key(2023, m)) for m in range(1, 13)]
 
-#: The frozen missingness accounting fields (S130-131).
+#: The fixed missingness accounting fields (S130-131).
 MISSINGNESS_FIELDS = (
     "expected_n",
     "observed_n",
@@ -39,7 +39,7 @@ MISSINGNESS_FIELDS = (
 def test_missingness_requires_the_explicit_expected_grid() -> None:
     """No call without ``expected_keys``; no inference kwarg spelling
     exists; the comparison is exact-key against the supplied grid and
-    the frozen accounting fields carry the right values."""
+    the fixed accounting fields carry the right values."""
     diagnostics = import_diagnostics()
 
     observed = unqualified_dataset(
@@ -424,8 +424,8 @@ def test_missingness_never_infers_a_calendar_or_reparses_sentinels() -> None:
 
 
 def test_missingness_report_carries_the_frozen_accounting_fields() -> None:
-    """The report dataclass carries exactly the frozen accounting field
-    names (S130-131) — no invented spellings shadow the frozen schema."""
+    """The report dataclass carries exactly the fixed accounting field
+    names (S130-131) — no invented spellings shadow the fixed schema."""
     diagnostics = import_diagnostics()
 
     report = diagnostics.missingness(
@@ -435,7 +435,7 @@ def test_missingness_report_carries_the_frozen_accounting_fields() -> None:
     names = field_names(report)
     missing = [name for name in MISSINGNESS_FIELDS if name not in names]
     assert not missing, (
-        f"the missingness report must carry the frozen accounting fields "
+        f"the missingness report must carry the fixed accounting fields "
         f"{MISSINGNESS_FIELDS}; missing {missing}; fields present: "
         f"{sorted(names)}"
     )
@@ -443,7 +443,7 @@ def test_missingness_report_carries_the_frozen_accounting_fields() -> None:
     for invented in ("denominator", "present_count", "missing_count", "missing_keys"):
         assert invented not in names or invented in MISSINGNESS_FIELDS, (
             f"the invented field {invented!r} must not appear alongside "
-            "the frozen accounting schema"
+            "the fixed accounting schema"
         )
 
 

@@ -12,7 +12,7 @@ The contract, in summary:
 
 - **Segment-composed growth.** Holding time splits into segments at
   execution instants; gross growth is ``G_gross,t = Π_m D_m`` with the
-  frozen-universe denominator ``D_m = Σᵢ wᵢ·gᵢ`` per segment — never a
+  fixed-universe denominator ``D_m = Σᵢ wᵢ·gᵢ`` per segment — never a
   single denominator over a multi-execution period.
 - **Multiplicative costs.** ``F_cost,t = Π_k (1 − q_k)`` under the
   cost law; ``G_net = G_gross × F_cost``; costs never enter
@@ -24,7 +24,7 @@ The contract, in summary:
   exactly at ``period_end`` belongs to the next row.
 - **The engine law.** Every supplied ``AccountingEngine`` must return
   ``POST_TRADE = TARGET`` on every execution — anything else rejects
-  fail-closed.
+  strict.
 - **Realized returns by holding interval.** The engine receives each
   decision's realized per-asset returns over ``[execution, next
   execution)``, the final execution ending at the ledger horizon;
@@ -196,7 +196,7 @@ def _segment_denominator(
             "the growth-factor universe must equal the held book's "
             f"universe exactly for the holding segment starting at "
             f"{start.isoformat()}; got factors {sorted(map(str, factors))} "
-            f"for the held book {sorted(book)} — the universe is frozen "
+            f"for the held book {sorted(book)} — the universe is fixed "
             "within one drift interval and an unmatched supply fails "
             "closed."
         )
@@ -272,7 +272,7 @@ def _require_unit_budget(book: Mapping[str, float], role: str) -> None:
     every supplied book on it (the initial book and every target) must
     carry budget exactly 1.0. A budget-0.5 book is not silently read
     as a 50% loss and cash/financing cannot hide off the book: both
-    reject fail-closed. Fully invested signed long/short books
+    reject unconditionally. Fully invested signed long/short books
     summing exactly to 1 remain admissible."""
     total = _exact_total(book.values())
     if total != 1.0:
@@ -288,7 +288,7 @@ def _require_unit_budget(book: Mapping[str, float], role: str) -> None:
 def _supplied_book(value: Any, role: str) -> dict[str, float]:
     """Admit a supplied weight book (the initial book or a decision's
     target): a mapping of identifiers to finite real weights with the
-    unit-NAV budget enforced — the unit-NAV gate on every supplied
+    unit-NAV budget enforced — the unit-NAV check on every supplied
     book."""
     if isinstance(value, (str, bytes)) or not isinstance(value, Mapping):
         raise ValueError(  # noqa: TRY004 — ValueError-only surface is the error law
@@ -311,7 +311,7 @@ class Execution:
     canonical weight-space trade, the turnover measure and cost
     fraction under the cost model's declared convention, and the
     post-trade book — which the engine law pins to the target exactly
-    (POST_TRADE = TARGET, verified fail-closed). An immutable value
+    (POST_TRADE = TARGET, re-verified). An immutable value
     object with deterministic value equality; no hash guarantee.
     """
 
@@ -461,7 +461,7 @@ def build_ledger(
     is denominated in — while ``initial_wealth`` only scales the
     reported ``wealth_open``/``wealth_close``/``final_wealth`` values.
     A positive finite real; anything else (0, negative, NaN, ±inf,
-    bool, non-real) rejects fail-closed with ``ValueError``.
+    bool, non-real) is rejected with ``ValueError``.
 
     The cost model is the ``Proportional`` model:
     ``build_ledger`` composes it through ``pl.costs`` and accepts no

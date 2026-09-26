@@ -178,7 +178,7 @@ def test_diagnostics_constructs_no_instants_or_availability() -> None:
 
 
 def test_diagnostics_outputs_are_immutable_stdlib_types() -> None:
-    """Every report/spec is a frozen stdlib structure: attribute mutation
+    """Every report/spec is a fixed stdlib structure: attribute mutation
     raises, no mutable dict/set surface exists, no pandas/numpy object
     appears, and value-equal datasets yield value-equal reports."""
     diagnostics = import_diagnostics()

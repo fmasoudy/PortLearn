@@ -59,5 +59,5 @@ Member (inner CSV/TXT) sha256 values, for reference:
   annual, firm-count, and average-market-cap sections (never decoded),
   with sentinel cells.
 
-Adapter version at pin time: `portlearn.data.adapters.ff` 1 (catalog frozen;
+Adapter version at pin time: `portlearn.data.adapters.ff` 1 (catalog fixed;
 see module docstring).

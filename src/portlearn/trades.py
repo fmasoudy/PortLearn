@@ -26,7 +26,7 @@ The laws, in summary:
   computed per asset identifier, so mapping insertion order can
   never change the trade.
 - **Sign semantics.** ``Δwᵢ > 0`` buys, ``Δwᵢ < 0`` sells, ``Δwᵢ = 0``
-  holds. Deltas are checked finite fail-closed — individually finite
+  holds. Deltas are checked finite strict — individually finite
   weights whose difference overflows the float range reject, never
   rescale.
 - **Retention.** The object retains the PRE_TRADE weights, the
@@ -99,7 +99,7 @@ class WeightTrade:
     def __init__(
         self, pre_trade: PortfolioWeights, target: PortfolioWeights
     ) -> None:
-        """Construct the transition with full fail-closed validation:
+        """Construct the transition with full strict validation:
         state pair, union-of-assets delta law, and per-identifier
         finite deltas — the same laws ``from_weights`` applies, so no
         inconsistent instance can ever exist."""

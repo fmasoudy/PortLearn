@@ -1,5 +1,5 @@
 """Behavior floors for ``coverage``: observed-support/accounting only —
-the frozen per-series record/series/distinct-exact-key/duplicate-cell
+the fixed per-series record/series/distinct-exact-key/duplicate-cell
 counts and value-domain presence accounting, duplicate disclosure, no
 completeness claim, no chronology on UNQUALIFIED labels, and mandatory
 state disclosure."""
@@ -22,7 +22,7 @@ from _synthetic import (
     walk_values,
 )
 
-#: The frozen per-series coverage accounting fields (S107-109).
+#: The fixed per-series coverage accounting fields (S107-109).
 COVERAGE_SERIES_FIELDS = (
     "n_records",
     "n_series",
@@ -69,13 +69,13 @@ def test_coverage_counts_records_series_and_distinct_keys_per_series() -> None:
     assert beta.n_distinct_exact_keys == 1
     assert beta.n_duplicate_cells == 0
 
-    # The frozen accounting field names appear on the per-series
-    # structure — no invented spelling shadows the frozen schema.
+    # The fixed accounting field names appear on the per-series
+    # structure — no invented spelling shadows the fixed schema.
     names = field_names(report)
-    for frozen in COVERAGE_SERIES_FIELDS:
-        assert frozen in names, (
-            f"the coverage report must carry the frozen accounting field "
-            f"{frozen!r}; fields present: {sorted(names)}"
+    for fixed in COVERAGE_SERIES_FIELDS:
+        assert fixed in names, (
+            f"the coverage report must carry the fixed accounting field "
+            f"{fixed!r}; fields present: {sorted(names)}"
         )
     for invented in (
         "record_count",
@@ -84,13 +84,13 @@ def test_coverage_counts_records_series_and_distinct_keys_per_series() -> None:
         "duplicate_count",
     ):
         assert invented not in names, (
-            f"the invented field {invented!r} must not appear: the frozen "
+            f"the invented field {invented!r} must not appear: the fixed "
             "S107-109 accounting names are the contract"
         )
 
 
 def test_coverage_per_series_value_domain_accounting() -> None:
-    """§4.4: per-series value-domain presence accounting — counts of the
+    """Per-series value-domain presence accounting — counts of the
     numeric / bool / str / None values actually retained, where the
     state's value domain admits them. Values are counted and disclosed,
     never coerced into statistics."""
@@ -236,13 +236,13 @@ def test_coverage_makes_no_completeness_claim_and_no_chronology_on_labels() -> N
 
 
 def test_coverage_groups_qualified_keys_on_observation_time_never_available() -> None:
-    """§4.4/§5 QUALIFIED law: exact-key grouping/accounting uses the
+    """QUALIFIED law: exact-key grouping/accounting uses the
     normalized observation-time identity; ``available_time`` is never
     read for grouping. Two records sharing an observation_time with
     DIFFERENT available_times form one duplicate cell (1 distinct key,
     1 duplicate) — an implementation grouping on the availability
     triple would instead report 2 distinct keys and 0 duplicates, so
-    this oracle kills available_time-grouping (W6). The distinct-
+    this reference kills available_time-grouping (W6). The distinct-
     instant support summary describes existing observation_time
     identity only."""
     diagnostics = import_diagnostics()

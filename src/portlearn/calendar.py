@@ -38,7 +38,7 @@ def _period_end_instant(year: int, month: int, tzinfo: Any) -> datetime:
     Builds ``23:59:59.999999`` on the month's last calendar day in the
     declared zone and UTC-normalizes it through
     ``to_instant``, which also rejects a naive/invalid zone
-    fail-closed.
+    unconditional.
     """
     last_day = _calendar.monthrange(year, month)[1]
     # A deliberately naive wall-clock reading: the declared zone is attached
@@ -67,7 +67,7 @@ def quarter_end_instant(year: int, quarter: int, tzinfo: Any) -> datetime:
     ``quarter`` is 1–4; the quarter's closing month is March, June,
     September, or December.  Returns the UTC-normalized instant of
     ``23:59:59.999999`` on that month's last calendar day in ``tzinfo``,
-    with the same fail-closed timezone check as
+    with the same strict timezone check as
     :func:`month_end_instant`.
     """
     if not isinstance(quarter, int) or isinstance(quarter, bool):

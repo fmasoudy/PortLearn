@@ -1,8 +1,8 @@
 """Behavior floors for ``correlation``: exact state-native-key alignment,
 the ``method``/``deletion`` keyword laws (Pearson/Spearman as separately
 selected methods, listwise default with pairwise as the explicit opt-in),
-the frozen ``min_overlap=3`` floor, duplicate-cell and ``series=``
-fail-closed laws, Spearman average ranks, and permutation invariance."""
+the fixed ``min_overlap=3`` floor, duplicate-cell and ``series=``
+unconditional laws, Spearman average ranks, and permutation invariance."""
 
 from __future__ import annotations
 
@@ -80,7 +80,7 @@ def _coefficient(entry, method):
     The per-pair disclosure is ``coefficient or None+reason``; the exact
     attribute spelling of the coefficient is implementation detail, so
     ``coefficient`` and the selected method name are both accepted
-    spellings — the value oracle, not the field name, is the contract.
+    spellings — the value reference, not the field name, is the contract.
     """
     for spelling in ("coefficient", method):
         if hasattr(entry, spelling):
@@ -202,7 +202,7 @@ def test_correlation_pairwise_deletion_is_explicit_opt_in_only() -> None:
         )
         assert getattr(entry, "deletion", None) == "listwise"
         assert _coefficient(entry, "pearson") is None, (
-            "n=2 sits below the frozen min_overlap=3 floor: the "
+            "n=2 sits below the fixed min_overlap=3 floor: the "
             "coefficient is undefined, never fabricated"
         )
         assert has_marker(entry, "insufficient_overlap")
@@ -271,7 +271,7 @@ def test_correlation_reports_every_pair_overlap_method_and_deletion() -> None:
         assert getattr(entry, "method", None) == "pearson"
         assert getattr(entry, "deletion", None) == "listwise"
         assert isinstance(getattr(entry, "n", None), int)
-        # One coefficient per pair under the SELECTED method: the frozen
+        # One coefficient per pair under the SELECTED method: the fixed
         # per-pair schema carries `method` + `coefficient`, never a
         # simultaneous pearson-and-spearman field pair from one call.
         assert not hasattr(entry, "spearman"), (
@@ -338,7 +338,7 @@ def test_correlation_reports_every_pair_overlap_method_and_deletion() -> None:
 
 
 def test_correlation_undefined_for_insufficient_overlap_or_constant_series() -> None:
-    """A pair below the frozen ``min_overlap=3`` floor yields ``None``
+    """A pair below the fixed ``min_overlap=3`` floor yields ``None``
     with the machine-readable reason ``insufficient_overlap`` carrying
     ``n`` and ``min_overlap``; a constant series yields ``None`` with
     ``constant_series`` naming it; ``min_overlap < 3`` rejects
@@ -514,7 +514,7 @@ def test_correlation_duplicate_series_or_key_fails_closed() -> None:
         f"key of the duplicated cell; got {message!r}"
     )
 
-    # Identical values at a duplicated cell still fail closed: the
+    # Identical values at a duplicated cell still unconditional: the
     # ambiguity is the duplicated key, not the value difference.
     identical_values = unqualified_dataset(
         (
@@ -564,7 +564,7 @@ def test_correlation_duplicate_series_or_key_fails_closed() -> None:
 def test_correlation_spearman_uses_average_ranks() -> None:
     """Hand-computed Spearman with ties in both series: tied values
     share the mean of their rank positions, then the Pearson formula
-    applies to the ranks. The oracle kills ordinal (distinct/competition)
+    applies to the ranks. The reference kills ordinal (distinct/competition)
     ranking, which would yield exactly 1.0 here."""
     diagnostics = import_diagnostics()
 

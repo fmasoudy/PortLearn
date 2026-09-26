@@ -2,14 +2,14 @@
 
 ``missingness`` is a standalone report callable: it accounts the
 dataset's observed exact ``(series, key)`` cells against a
-caller-declared expected grid and returns frozen counts — how much of
+caller-declared expected grid and returns fixed counts — how much of
 the grid is observed, how much is absent, how many observed records
 lie outside the grid, and how many observed records at expected cells
 carry a null value.  The grid is explicit and required: the callable
 never invents, derives, or interpolates expected keys, and it accepts
 no other route to one.  Validation runs before any accounting: a grid
 with a repeated cell and a dataset with a repeated ``(series, exact
-key)`` cell each fail closed, and a grid entry of the wrong shape or
+key)`` cell each unconditional, and a grid entry of the wrong shape or
 key type fails with a ``TypeError``.
 
 Research datasets only; NOT investable.
@@ -52,7 +52,7 @@ def _state_native_key(record: Any, availability_state: str) -> Any:
 
 @dataclass(frozen=True)
 class MissingnessReport:
-    """The frozen missingness report against the declared grid."""
+    """The fixed missingness report against the declared grid."""
 
     report_kind: ClassVar[str] = "missingness"
 
@@ -95,7 +95,7 @@ def missingness(
         raise TypeError(
             "expected_keys must be an iterable of (series_id, key) "
             "pairs declaring the expected observation grid; got "
-            f"{type(expected_keys).__name__!r}, fail-closed"
+            f"{type(expected_keys).__name__!r}, unconditional"
         ) from None
 
     expected_cells: list[tuple[str, Any]] = []
@@ -104,13 +104,13 @@ def missingness(
         if not isinstance(entry, tuple) or len(entry) != 2:
             raise TypeError(
                 "each expected_keys entry must be a (series_id, key) "
-                f"pair; got {entry!r}, fail-closed"
+                f"pair; got {entry!r}, unconditional"
             )
         series_id, key = entry
         if not isinstance(series_id, str) or isinstance(series_id, bool):
             raise TypeError(
                 "the expected_keys series identity must be a str; got "
-                f"{type(series_id).__name__}: {series_id!r}, fail-closed"
+                f"{type(series_id).__name__}: {series_id!r}, unconditional"
             )
         if state == "UNQUALIFIED":
             key_ok = isinstance(key, str) and not isinstance(key, bool)
@@ -121,14 +121,14 @@ def missingness(
                 "each expected_keys key must be the sealed state's exact "
                 f"key type ({'str' if state == 'UNQUALIFIED' else 'datetime'}"
                 f" while {state}); got {type(key).__name__}: {key!r}, "
-                "fail-closed"
+                "unconditional"
             )
         cell = (series_id, key)
         if cell in seen_expected:
             raise ValueError(
                 f"expected_keys carries the exact cell {cell!r} more than "
                 "once; the declared grid is a set of distinct cells, "
-                "fail-closed"
+                "unconditional"
             )
         seen_expected.add(cell)
         expected_cells.append(cell)
@@ -145,7 +145,7 @@ def missingness(
                 f"duplicate retained cell: series {cell[0]!r} carries the "
                 f"exact key {cell[1]!r} more than once; the accounting "
                 "requires at most one record per (series, exact key) cell, "
-                "fail-closed"
+                "unconditional"
             )
         observed_cells.add(cell)
         if record.value is None and cell in seen_expected:

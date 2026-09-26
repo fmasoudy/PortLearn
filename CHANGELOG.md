@@ -2,11 +2,16 @@
 
 All notable public changes to PortLearn are documented in this file.
 
-Git history remains the detailed development record. This changelog is the curated user/researcher-facing history: it tracks meaningful public changes and public software releases, with release sections recording releases and the entries within them recording user-visible changes.
-
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Versioning follows the project's PEP 440 policy: early-development `0.0.x` public releases.
 
 ## [Unreleased]
+
+## [0.0.1.dev3]
+
+### Added
+
+- Strategies: the `portlearn.strategies` module with the four built-in classical strategies — `EqualWeight`, `InverseVolatility`, `MinimumVariance`, and `MeanVariance` — implementing the strategy decision contract.
+- SciPy ships as a core runtime dependency: the constrained optimization solvers used by `MinimumVariance` and `MeanVariance` are available from a plain `pip install portlearn`. SciPy is lazily imported inside the internal optimizer adapter, never at package import.
 
 ## [0.0.1.dev2]
 

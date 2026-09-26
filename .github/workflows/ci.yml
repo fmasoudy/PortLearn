@@ -1,6 +1,6 @@
 # Public CI for PortLearn.
 # Runs on every push and pull request, guarded to the public fmasoudy/
-# PortLearn repository, least-privilege permissions, frozen
+# PortLearn repository, least-privilege permissions, fixed
 # per-interpreter sequence, single dependent build-and-verify-wheel job,
 # immutable action pins.
 name: ci
@@ -28,7 +28,7 @@ jobs:
         uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
         with:
           version: "0.12.10"
-      - name: Run the frozen per-interpreter sequence
+      - name: Run the fixed per-interpreter sequence
         run: |
           uv sync --locked --python ${{ matrix.python-version }}
           uv run --python ${{ matrix.python-version }} ruff check .

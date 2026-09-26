@@ -1,6 +1,6 @@
 """Composition and strategy-contract falsification battery (P0-P4, C1-C15).
 
-Every floor in this module runs against the frozen public surface of
+Every floor in this module runs against the public surface of
 PortLearn only: no private imports, no monkey-patching, no test-only
 adapters in ``src/``, and no re-derived library echoes — every expected
 value below is hand-derived from the declared synthetic world in
@@ -28,7 +28,7 @@ charged to the period containing its execution instant):
 * ``d2``: decided ``T0``, executed ``T1``, target ``{CASH: 0.625, B: 0.375}``
 * ``d3``: decided ``T1``, executed ``T2``, target ``{CASH: 1.0}``
 
-Segment gross growth factors (frozen universe per segment; the CASH
+Segment gross growth factors (fixed universe per segment; the CASH
 factor is carried by the synthetic series ``SYNTHGC``):
 
 * ``[T0, T1)``: ``{A: 2.5, B: 1.5}``
@@ -68,7 +68,7 @@ Falsification outcomes for this public test module
 * Repaired through the ``DecisionContext`` seam: C8 (equal
   weight), C9 (minimum variance), C11 (direct neural allocation),
   C12 (stateful RL), and the P4 current-portfolio-state decision flow were
-  FALSIFIED on the frozen ``decide(self, forecast)`` seam — no lawful
+  FALSIFIED on the fixed ``decide(self, forecast)`` seam — no lawful
   parameter carried the current universe, the current portfolio state
   available at decision time, or the strategy's carried state.  The
   repaired decision contract added
@@ -265,7 +265,7 @@ def _information_set(
 ) -> InformationSet:
     """Admit the point-in-time visible subset of ``records`` at ``as_of``.
 
-    The frozen admission law is fail-closed on the *whole* submitted
+    The fixed admission law rejects on the *whole* submitted
     collection — one not-yet-available record rejects the entire set —
     so the caller selects the visible records first (the point-in-time
     discipline), exactly as the public research chain must.
@@ -326,7 +326,7 @@ class GrowthFactorForecaster:
     """C3 research forecaster stand-in.
 
     Produces a provenance-bearing ``Forecast`` whose values are the
-    latest *visible vintage* per series (selected with the frozen public
+    latest *visible vintage* per series (selected with the public
     ``vintage_as_of`` operation), keyed by series id.  This is the only
     ``Forecast`` the public research chain can derive from the admitted
     data — the falsification floors use it as the lawful baseline.
@@ -778,7 +778,7 @@ def test_synthetic_dataset_qualifies_through_public_admission() -> None:
 def test_information_set_assembles_from_qualified_data() -> None:
     """C2 (PASS).  ``InformationSet`` builds from the qualified
     observations with the pinned constructor signature and admits as
-    the forecaster's input under the frozen admission law."""
+    the forecaster's input under the fixed admission law."""
     records = _world_records(_qualified_world())
     # Pinned public constructor signature: exactly (items, as_of).
     assert list(inspect.signature(InformationSet.__init__).parameters) == [
@@ -830,7 +830,7 @@ def test_forecaster_stand_in_produces_provenance_bearing_forecast() -> None:
     assert forecast.target == "growth_factor"
     assert forecast.values == {"FRED/SYNTHGA": 2.5, "FRED/SYNTHGB": 1.5}
     assert forecaster.identity in forecast.produced_by
-    # The values are the frozen vintage operation's own selection: the
+    # The values are the strict vintage operation's own selection: the
     # query submits exactly one (series_id, observation_time) group —
     # the June observation of SYNTHGA — and its visible vintage is 2.5.
     june_group = [
@@ -877,7 +877,7 @@ def test_strategy_stand_in_decides_target_weights_from_forecast() -> None:
     # The state channel transitions lawfully: the first decision's
     # next_strategy_state is exactly the one-book history.
     assert result.next_strategy_state == ({"A": 0.5, "B": 0.5},)
-    # The chronology law is fail-closed at the decision value object
+    # The chronology law is unconditional at the decision value object
     # itself: a trade executing before it is decided cannot even be
     # constructed, so it can never reach the accounting surface.
     with pytest.raises(InvalidChronologyError):
@@ -1206,7 +1206,7 @@ def test_minimum_variance_representation_yields_natural_decision_observable() ->
     assert target == {"A": 0.25 / 1.25, "B": 1.0 / 1.25}
     assert target["A"] == 0.2 and target["B"] == 0.8
 
-    # (b) The channel is fail-closed: without the carried risk model
+    # (b) The channel is unconditional: without the carried risk model
     # the strategy cannot decide — the moments exist on no other
     # lawful channel.
     with pytest.raises(ValueError, match="no lawful Forecast"):
@@ -1302,7 +1302,7 @@ def test_direct_neural_allocation_representation_yields_natural_decision_observa
     target = strategy.decide(context).decision.target_weights
     assert target == {"A": 0.25, "B": 0.75}
 
-    # (b) The channel is fail-closed: without the carried feature
+    # (b) The channel is unconditional: without the carried feature
     # vector the strategy cannot decide.
     with pytest.raises(ValueError, match="no lawful Forecast"):
         strategy.decide(_decision_context(records, T0))
@@ -1409,7 +1409,7 @@ def test_stateful_rl_representation_yields_natural_decision_observable() -> None
         "trades": 1,
     }
 
-    # (b) The channel is fail-closed: without the carried policy state
+    # (b) The channel is unconditional: without the carried policy state
     # the strategy cannot decide.
     with pytest.raises(ValueError, match="no lawful Forecast"):
         StatefulRLStandIn().decide(_decision_context(records, T0))
@@ -1442,7 +1442,7 @@ def test_stateful_rl_representation_yields_natural_decision_observable() -> None
 
 
 # --------------------------------------------------------------------------- #
-# C13 — changing universe (GREEN: explicit universe channel)                   #
+# C13 — changing universe (valid: explicit universe channel)                   #
 # --------------------------------------------------------------------------- #
 
 
@@ -1491,7 +1491,7 @@ def test_changing_universe_representation_yields_natural_decision_observable() -
         assert decision.execution_time >= decision.decision_time
 
     # The exit trades are executable weight-space transitions over the
-    # union of the books (the frozen trades law): exiting A at T1
+    # union of the books (the fixed trades law): exiting A at T1
     # trades |Δ| = 0.625 exactly — hand-derived in the C5 docstring.
     path, _decisions, _state, _manifest = _run_composition("m26-c13", S0)
     exit_execution = path.rows[1].executions[0]
@@ -1695,7 +1695,7 @@ class PositionCountEvaluator:
     """C15 evaluator stand-in, held to the evaluator-contract boundary.
 
     Exactly one trivial observable — the position count of the
-    post-trade book — computed through the frozen public
+    post-trade book — computed through the public
     ``AccountingResult`` → ``Evaluator`` seam.  The stand-in defines
     no metric catalogue, statistic, benchmark, significance
     semantics, or result schema; terminal wealth and period count
@@ -1767,7 +1767,7 @@ def test_evaluator_stand_in_returns_one_trivial_observable() -> None:
         {"position_count": 1.0},
     ]
 
-    # 4. The seam shape is frozen (interfaces.py:474): exactly one
+    # 4. The seam shape is fixed (interfaces.py:474): exactly one
     #    parameter — the accounting result, nothing else.
     assert list(inspect.signature(Evaluator.evaluate).parameters) == [
         "self",

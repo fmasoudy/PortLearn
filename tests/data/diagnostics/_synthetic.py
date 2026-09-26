@@ -79,7 +79,7 @@ def sha256_hex(data: bytes) -> str:
 
 
 def import_diagnostics() -> Any:
-    """Import the diagnostics package inside the calling test (causal RED)."""
+    """Import the diagnostics package inside the calling test (causal rejection)."""
     return importlib.import_module("portlearn.data.diagnostics")
 
 
@@ -238,7 +238,7 @@ def availability_policy() -> Any:
 
 
 def fred_snapshot_dataset() -> UnqualifiedDataset:
-    """The committed synthetic FRED replica, decoded through the frozen
+    """The committed synthetic FRED replica, decoded through the fixed
     provider decoder: 36 table rows of which two carry the provider
     missing sentinel (``"."``), so exactly 34 records are retained."""
     from portlearn.data.adapters import fred as fred_adapter

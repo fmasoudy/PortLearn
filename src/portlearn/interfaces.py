@@ -16,7 +16,7 @@ without change:
 
 - **No new time semantics** — every instant an interface carries is one
   of this package's financial timestamps with its fixed meaning, and a
-  naive ``datetime`` or a ``datetime.date`` is rejected fail-closed at
+  naive ``datetime`` or a ``datetime.date`` is rejected strict at
   every boundary with the reused ``NaiveTimestampError``: no default
   timezone is assumed and no date-to-midnight coercion is performed.
 - **No second admission rule** — admission into an ``InformationSet``
@@ -24,7 +24,7 @@ without change:
   ``available_time <= decision_time``, delegated to
   ``require_available_for_decision``; this module never re-implements,
   widens, or shadows it.
-- **No new error classes** — the fail-closed surface reuses the timing
+- **No new error classes** — the error surface reuses the timing
   and observations errors with their fixed module ownership
   (``portlearn.timing`` and ``portlearn.observations``); the only
   built-in error raised is ``ValueError`` for blank identifiers, blank
@@ -91,7 +91,7 @@ __all__ = [
 
 
 # --------------------------------------------------------------------------- #
-# Fail-closed input gates — reused from portlearn.timing
+# Unconditional input checks — reused from portlearn.timing
 # --------------------------------------------------------------------------- #
 
 # The aware-instant validator is implemented in ``portlearn.timing``
@@ -107,7 +107,7 @@ __all__ = [
 
 
 def _require_identifier(identifier: object, field_name: str) -> None:
-    """Reject blank or non-string identifiers fail-closed.
+    """Reject blank or non-string identifiers unconditional.
 
     Identifiers are exact strings — no case folding, trimming, or
     Unicode normalization of any kind — and a blank or non-string
@@ -121,7 +121,7 @@ def _require_identifier(identifier: object, field_name: str) -> None:
             f"the instrument or series it refers to; got "
             f"{type(identifier).__name__}: {identifier!r}. A non-string "
             "identifier names no instrument or series, so the value is "
-            "rejected fail-closed."
+            "rejected unconditionally."
         )
     if not identifier.strip():
         raise ValueError(
@@ -129,7 +129,7 @@ def _require_identifier(identifier: object, field_name: str) -> None:
             f"identifier naming the instrument or series it refers to; "
             f"got {identifier!r}. A blank identifier names no "
             "instrument or series, so the value is rejected "
-            "fail-closed."
+            "unconditional."
         )
 
 
@@ -149,7 +149,7 @@ class InformationSet:
     the set is exactly what could have been known when the decision was
     made — never information from the decision-to-execution gap.
 
-    Construction is fail-closed over the whole submitted collection, in
+    Construction validates strictly over the whole submitted collection, in
     this exact order:
 
     1. ``as_of`` must be an aware instant (naive datetimes and
@@ -184,7 +184,7 @@ class InformationSet:
     def __init__(
         self, items: Iterable[TimedObservation], as_of: datetime
     ) -> None:
-        """Admit ``items`` at ``as_of`` or reject fail-closed."""
+        """Admit ``items`` at ``as_of`` or reject invalid input."""
         decision = _require_aware_instant(as_of, "as_of")
         submitted = tuple(items)
 
@@ -273,7 +273,7 @@ class Forecast:
     tests, not a constructor-enforced invariant. ``produced_by`` names
     the producing forecaster for provenance.
 
-    Construction is fail-closed: ``decision_time`` must be an aware
+    Construction validates strictly: ``decision_time`` must be an aware
     instant, and ``target``, ``produced_by``, and every key of
     ``values`` must be a non-blank exact string. ``values`` is stored
     exactly as given — no copy, no deep freeze.
@@ -305,7 +305,7 @@ class PortfolioDecision:
     any kind — sum-to-one, gross and net exposure, long/short, and
     feasibility conventions are left to the portfolio-weight contracts of :mod`portlearn.weights`.
 
-    Construction is fail-closed: both instants must be aware, every
+    Construction validates strictly: both instants must be aware, every
     ``target_weights`` key must be a non-blank exact string, and the
     chronology law must hold.
     """
@@ -339,7 +339,7 @@ class PortfolioDecision:
 class AccountingResult:
     """The result of accounting one portfolio decision (deliberately thin).
 
-    A frozen value object with exactly one fact: accounting produces an
+    A immutable value object with exactly one fact: accounting produces an
     identifiable accounting result containing the post-trade portfolio
     weights. It is deliberately not a ledger schema — no lot, cash,
     fee, or realized-P&L field exists on it, and ``post_trade_weights``
@@ -365,7 +365,7 @@ class DecisionContext:
     optional ``forecast``. The timestamped portfolio is exactly these
     two concrete fields - there is no pseudo-type wrapping them.
 
-    Construction is fail-closed over the admission
+    Construction validates strictly over the admission
     and alignment laws, in this order:
 
     1. ``decision_time`` must be an aware instant (naive datetimes
@@ -396,7 +396,7 @@ class DecisionContext:
     execution-time book separately.
 
     ``strategy_state`` is stored exactly as given and is never
-    mutated by this object; a stateful strategy's transitions are
+    modify by this object; a stateful strategy's transitions are
     represented solely through ``DecisionResult.next_strategy_state``.
     """
 
@@ -416,12 +416,12 @@ class DecisionContext:
             decision_aware, "decision_time"
         )
         if isinstance(self.universe, str):
-            raise ValueError(  # noqa: TRY004 — the fail-closed surface is ValueError-only, mirroring the blank-identifier law
+            raise ValueError(  # noqa: TRY004 — the rejection surface is ValueError-only, mirroring the blank-identifier law
                 "universe must be a sequence of exact-string "
                 "instrument identifiers in caller-declared order, not "
                 f"a single string; got {self.universe!r}. A single "
                 "string names one instrument, not a universe, so the "
-                "value is rejected fail-closed."
+                "value is rejected unconditionally."
             )
         normalized_universe = tuple(self.universe)
         seen_universe: set[str] = set()
@@ -434,7 +434,7 @@ class DecisionContext:
                     "- the universe is a sequence of exact-string "
                     "instrument identifiers in caller-declared order, "
                     "so a duplicate names no additional instrument and "
-                    "is rejected fail-closed."
+                    "is rejected unconditionally."
                 )
             seen_universe.add(identifier)
         object.__setattr__(self, "universe", normalized_universe)
@@ -448,7 +448,7 @@ class DecisionContext:
                 "strategy desires and POST_TRADE is what accounting "
                 "produced; neither is a lawful decision-time "
                 "holdings snapshot, so the value is rejected "
-                "fail-closed (the decision-context role law)."
+                "unconditional (the decision-context role law)."
             )
         holdings_aware = _require_aware_instant(
             self.current_weights_as_of, "current_weights_as_of"
@@ -492,7 +492,7 @@ class DecisionContext:
                     f"decision_time={decision_instant.isoformat()}. A "
                     "forecast dated elsewhere belongs to a different "
                     "decision instant, so the value is rejected "
-                    "fail-closed."
+                    "unconditional."
                 )
 
 
@@ -503,7 +503,7 @@ class DecisionResult:
     Exactly two facts: the ``decision`` (a ``PortfolioDecision``) and
     the ``next_strategy_state`` the strategy carries forward (``None``
     for a stateless strategy). The state law is fixed: the context's
-    input ``strategy_state`` is never mutated in place - every
+    input ``strategy_state`` is never modified in place - every
     transition is represented solely by ``next_strategy_state``, and
     randomness affecting replay is carried explicitly through that
     state rather than hidden mutable RNG state. The cross-object rules - ``decision.decision_time == context.decision_time``
@@ -574,7 +574,7 @@ class Strategy(Protocol):
     ``decide(forecast)`` is not a lawful alternative: the contract
     admits no compatibility shim, no dual protocol, and no
     adapter around this seam. The context's ``strategy_state``
-    is never mutated in place; every state transition is
+    is never modified in place; every state transition is
     represented solely by the result's ``next_strategy_state``.
     Static-only: validated behaviorally, not by ``isinstance``.
     """
@@ -699,7 +699,7 @@ def require_forecast_decision_compatible(
     with information admitted at the later instant. The impossible
     ordering alone is forbidden: a decision dated before the
     information it consumed is look-ahead leakage. Both instants are
-    aware-gated first, so naive or date-valued instants reject with
+    aware-checked first, so naive or date-valued instants reject with
     ``NaiveTimestampError`` before any comparison.
 
     Raises ``InvalidChronologyError`` (from ``portlearn.timing``) on

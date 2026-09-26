@@ -5,7 +5,7 @@ separation laws including feature lineage monotonicity, point-in-time
 vintage selection over a single ``(series_id, observation_time)`` group,
 exact series identity with no normalization of any kind, the
 ``AmbiguousObservationError``/``FeatureLineageError`` arms of the
-fail-closed taxonomy, and the frozen module ownership, import-cycle,
+rejection taxonomy, and the fixed module ownership, import-cycle,
 stdlib-only, and file-scope invariants of the package.  Sections below
 cover the valid-admission matrix (vintage selection and determinism on
 the observations surface), the rejection matrix (malformed instants,
@@ -321,7 +321,7 @@ def test_empty_input_collection_is_rejected() -> None:
 
 
 def test_lineage_surface_rejects_naive_and_date_inputs() -> None:
-    """Malformed time inputs fail closed on the lineage surface too."""
+    """Malformed time inputs unconditional on the lineage surface too."""
     with pytest.raises(NaiveTimestampError):
         require_lineage_monotone(
             feature_available_time=datetime(2026, 3, 16, 9, 0),  # noqa: DTZ001  # intentional naive instant
@@ -397,7 +397,7 @@ def test_no_visible_vintage_returns_no_vintage() -> None:
 def test_blank_or_non_string_identifier_is_rejected(
     identifier: object,
 ) -> None:
-    """Blank or non-string series identifiers fail closed at
+    """Blank or non-string series identifiers unconditional at
     construction with the built-in ``ValueError``."""
     with pytest.raises(ValueError) as excinfo:
         revision(FIRST_RELEASE, 1.0, series_id=identifier)  # type: ignore[arg-type]
@@ -441,7 +441,7 @@ def test_unicode_normalization_variants_remain_distinct_series() -> None:
 
 
 def test_identifier_is_preserved_exactly() -> None:
-    """Identifiers round-trip byte-for-byte through construction
+    """Identifiers round-trip exactly through construction
     and selection; no normalization on the way out either."""
     padded = revision(FIRST_RELEASE, 1.0, series_id=" MACRO.CPI.YOY ")
     assert padded.series_id == " MACRO.CPI.YOY "
@@ -499,7 +499,7 @@ def _import_targets(path: Path) -> set[str]:
 
 
 def test_error_module_ownership_is_frozen() -> None:
-    """The six errors live in exactly their frozen home modules."""
+    """The six errors live in exactly their fixed home modules."""
     assert NaiveTimestampError.__module__ == "portlearn.timing"
     assert InvalidChronologyError.__module__ == "portlearn.timing"
     assert FutureInformationError.__module__ == "portlearn.timing"
@@ -519,7 +519,7 @@ def test_timing_module_imports_stdlib_only() -> None:
     }
     assert non_stdlib == set(), (
         "portlearn.timing must import stdlib only, importing nothing from "
-        "portlearn.observations so no import cycle exists on the frozen "
+        "portlearn.observations so no import cycle exists on the fixed "
         f"surface; found {sorted(non_stdlib)}"
     )
 

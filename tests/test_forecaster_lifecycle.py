@@ -1,15 +1,15 @@
 """Behavioral contract tests for the forecasting lifecycle module.
 
-These nodes enforce the approved lifecycle laws adversarially: the
+These nodes enforce the specified lifecycle laws adversarially: the
 fitting plan is an immutable declared identity with exactly one clock
 (no independent training-cutoff field exists or can be smuggled in),
 the fitting cutoff is exactly the fit information set's own ``as_of``
-enforced at the fitting boundary, refit grids reuse the frozen timing
-errors, the frozen ``forecast(information_set)`` protocol is the only
+enforced at the fitting boundary, refit grids reuse the fixed timing
+errors, the fixed ``forecast(information_set)`` protocol is the only
 prediction path (no side door), forecasts carry lifecycle provenance,
 determinism classes are declared and honest, hyperparameter selection
 labels must be realizable at the selection origin, the error taxonomy
-reuses the frozen contract errors, and a dependency-free external
+reuses the fixed contract errors, and a dependency-free external
 estimator stand-in behind a researcher-side wrapper binds every law
 identically.
 """
@@ -257,7 +257,7 @@ def _assert_protocol_is_declaration_only(protocol: type) -> None:
 
 
 def test_fitting_plan_declares_its_identity_without_any_cutoff_field() -> None:
-    """The plan's frozen field set contains no training-cutoff field.
+    """The plan's fixed field set contains no training-cutoff field.
 
     The fitting cutoff is the fit information set's own ``as_of``; the
     plan is declared before any fit exists, so a cutoff-bearing plan
@@ -413,9 +413,9 @@ def test_fit_cutoff_is_exactly_the_fit_set_as_of_in_provenance() -> None:
 
 
 def test_fitting_boundary_rejects_records_available_after_the_as_of() -> None:
-    """Every record consumed by fitting is re-gated at the fitting
+    """Every record consumed by fitting is re-checked at the fitting
     boundary: a record whose availability follows the fit set's
-    ``as_of`` rejects with the frozen ``FutureInformationError``."""
+    ``as_of`` rejects with the fixed ``FutureInformationError``."""
     fit_set = training_set(day(10))
 
     honest = [obs(1, 1, 1.0), obs(9, 9, 9.0)]
@@ -470,7 +470,7 @@ def test_divergent_cutoff_assertions_are_rejected_at_one_clock() -> None:
 
 def test_declared_fit_window_start_must_not_follow_the_fit_cutoff() -> None:
     """A fit window that begins after the information the fit set
-    admitted is chronologically impossible and rejects with the frozen
+    admitted is chronologically impossible and rejects with the fixed
     ``InvalidChronologyError``; a window starting at or before the
     cutoff is admissible."""
     fit_set = training_set(day(10))
@@ -489,7 +489,7 @@ def test_declared_fit_window_start_must_not_follow_the_fit_cutoff() -> None:
 
 
 # --------------------------------------------------------------------------- #
-# Refit schedules: declared grids under the frozen timing laws
+# Refit schedules: declared grids under the fixed timing laws
 # --------------------------------------------------------------------------- #
 
 
@@ -540,14 +540,14 @@ def test_refit_schedule_is_immutable_and_copies_the_supplied_instants() -> None:
 
 
 # --------------------------------------------------------------------------- #
-# The forecast origin: the frozen protocol is the only prediction path
+# The forecast origin: the fixed protocol is the only prediction path
 # --------------------------------------------------------------------------- #
 
 
 def test_forecast_origin_is_exactly_the_information_set_as_of() -> None:
     """A fitted stand-in produces a forecast whose ``decision_time`` is
     exactly the information set's ``as_of``, and that forecast is
-    compatible with a same-instant portfolio decision under the frozen
+    compatible with a same-instant portfolio decision under the fixed
     validator."""
     fit_set = training_set(day(10))
     fitted = _FactoryStandIn(lifecycle_plan()).fit(fit_set)
@@ -567,7 +567,7 @@ def test_forecast_origin_is_exactly_the_information_set_as_of() -> None:
 
 def test_the_lifecycle_surface_offers_no_prediction_side_door() -> None:
     """The module defines no ``predict``-shaped path anywhere in its
-    source, its export list is exactly the approved contract surface,
+    source, its export list is exactly the public contract surface,
     and the two lifecycle protocols are declaration-only and
     static-only."""
     from portlearn import forecasting
@@ -609,7 +609,7 @@ def test_the_lifecycle_surface_offers_no_prediction_side_door() -> None:
 
 def test_composed_lifecycle_walk_from_plan_through_fit_to_forecast() -> None:
     """The composed walk holds: a declared plan fits through the
-    boundary gates on an admitted set, provenance records that set's
+    boundary checks on an admitted set, provenance records that set's
     ``as_of``, each scheduled refit instant owns decisions until the
     next, and the forecast origin equals the deciding set's
     ``as_of``."""
@@ -678,7 +678,7 @@ def test_forecast_provenance_carries_plan_identity_cutoff_and_seed() -> None:
 def test_blank_provenance_identity_is_rejected_fail_closed() -> None:
     """A blank model identity rejects at plan construction, a blank
     wrapped-identity declaration rejects at the provenance factory, and
-    the frozen forecast object rejects a blank ``produced_by``."""
+    the fixed forecast object rejects a blank ``produced_by``."""
     fit_set = training_set(day(10))
 
     with pytest.raises(PlanStructureError):
@@ -799,9 +799,9 @@ def test_deterministic_stand_in_produces_identical_forecasts_across_runs() -> No
 
 def test_selection_labels_available_after_the_origin_are_blocked() -> None:
     """Scoring a configuration on a label not yet available at the
-    selection origin — the walk-forward leak — rejects with the frozen
+    selection origin — the walk-forward leak — rejects with the fixed
     ``FutureInformationError``; one late label poisons the whole
-    collection, and a naive origin rejects with the frozen naive
+    collection, and a naive origin rejects with the fixed naive
     error."""
     origin = day(10)
     realizable = obs(5, 9, 1.5)
@@ -838,14 +838,14 @@ def test_selection_labels_honoring_the_origin_rule_are_admitted() -> None:
 
 
 # --------------------------------------------------------------------------- #
-# Package discipline: frozen errors reused, structural arm module-owned
+# Package discipline: fixed errors reused, structural arm module-owned
 # --------------------------------------------------------------------------- #
 
 
 def test_error_taxonomy_reuses_frozen_errors_and_keeps_init_untouched() -> None:
-    """The module defines none of the six frozen contract errors, the
-    frozen battery tuple is unchanged, the structural arm is a
-    ``ValueError`` arm disjoint from the frozen classes, and importing
+    """The module defines none of the six fixed contract errors, the
+    fixed battery tuple is unchanged, the structural arm is a
+    ``ValueError`` arm disjoint from the fixed classes, and importing
     the package alone does not import this module."""
     from portlearn import forecasting
     from portlearn import observations as observations_module
@@ -862,7 +862,7 @@ def test_error_taxonomy_reuses_frozen_errors_and_keeps_init_untouched() -> None:
     }
     for name in frozen_names:
         assert name not in vars(forecasting), (
-            f"the frozen error {name} must not be re-defined or shadowed"
+            f"the fixed error {name} must not be re-defined or shadowed"
         )
 
     assert FROZEN_CONTRACT_ERRORS == (
@@ -880,8 +880,8 @@ def test_error_taxonomy_reuses_frozen_errors_and_keeps_init_untouched() -> None:
         ProvenanceStructureError,
     ):
         assert issubclass(structural, ValueError)
-        for frozen in FROZEN_CONTRACT_ERRORS:
-            assert not issubclass(structural, frozen)
+        for fixed in FROZEN_CONTRACT_ERRORS:
+            assert not issubclass(structural, fixed)
 
     probe = subprocess.run(
         [
@@ -908,7 +908,7 @@ def test_error_taxonomy_reuses_frozen_errors_and_keeps_init_untouched() -> None:
 
 def test_external_stand_in_behind_a_wrapper_binds_every_law() -> None:
     """A dependency-free external-estimator stand-in behind a
-    researcher-side wrapper conforms to the whole lifecycle: the frozen
+    researcher-side wrapper conforms to the whole lifecycle: the fixed
     protocol shape, the one-clock cutoff law (including rejection of
     the wrapped library's divergent internal bookkeeping), and
     provenance recording the wrapped implementation's identity and

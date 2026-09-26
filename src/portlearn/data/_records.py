@@ -52,11 +52,11 @@ class PeriodKeyObservation:
     placing a period on the single timeline is exactly the
     qualification step this record deliberately omits.
 
-    Construction is fail-closed: ``series_id`` and ``period_key`` must
+    Construction is unconditional: ``series_id`` and ``period_key`` must
     be non-blank strings (a blank identifier names no series; a blank
     period label names no period), and ``value`` must be a float in the
     closed ingestion value domain — no arbitrary object may pose as an
-    observation value.  The record is frozen and hashable; identity and
+    observation value.  The record is fixed and hashable; identity and
     equality are field-wise over the whole triple.
     """
 
@@ -70,21 +70,21 @@ class PeriodKeyObservation:
                 "series_id must be a non-empty, non-blank string identifier "
                 "naming the series the observation belongs to; got "
                 f"{self.series_id!r}. A blank identifier names no series, "
-                "so the period-key observation is rejected fail-closed."
+                "so the period-key observation is rejected unconditionally."
             )
         if not isinstance(self.period_key, str) or not self.period_key.strip():
             raise ValueError(
                 "period_key must be a non-empty, non-blank provider period "
                 f"label; got {self.period_key!r}. A blank label names no "
                 "period, so the period-key observation is rejected "
-                "fail-closed."
+                "unconditional."
             )
         if not isinstance(self.value, float):
             raise TypeError(
                 "value must be a float in the closed observation value "
                 f"domain; got {type(self.value).__name__}: {self.value!r}. "
                 "An untyped value cannot pose as an observation, so the "
-                "period-key observation is rejected fail-closed."
+                "period-key observation is rejected unconditionally."
             )
 
 
@@ -103,7 +103,7 @@ class RetrievalProvenance:
       retrieval-only record never satisfies the qualified provenance
       contract, so the qualified decoders' provenance fences cannot be
       satisfied by a retrieval-only artifact;
-    * frozen and hashable (concrete classes keep every field hashable;
+    * fixed and hashable (concrete classes keep every field hashable;
       the FRED record's ``request_params`` is a canonical immutable
       tuple of key-sorted pairs, so it remains hashable end-to-end).
     """

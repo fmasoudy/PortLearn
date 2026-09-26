@@ -128,9 +128,9 @@ class ObservationStore:
 
     The index maps each ``(series_id, observation_time)`` group to its
     records, and each series to its group keys in observation order.
-    Inputs are copied at construction, so later mutation of the
+    Inputs are copied at construction, so later modify of the
     caller's collection cannot change what the store indexed; the
-    store exposes no mutation surface of its own. ``provenance`` is a
+    store exposes no modification surface of its own. ``provenance`` is a
     read-only mapping recording the store's shape and the availability
     basis: availability is each record's own declared
     ``available_time`` — alignment adds no publication lag.
@@ -276,7 +276,7 @@ class ObservationStore:
 
 
 def _materialize_requests(requested_groups: Iterable[Any]) -> tuple[Any, ...]:
-    """Requests as a tuple, rejecting non-sequences fail-closed."""
+    """Requests as a tuple, rejecting non-sequences."""
     if isinstance(requested_groups, (str, bytes)):
         raise GridDeclarationError(
             "requested_groups must be a sequence of "
@@ -330,7 +330,7 @@ def align(
     objects.
 
     The output is the caller's to submit to the ``InformationSet(items, as_of=decision_instant)`` constructor for
-    fail-closed admission; this function never constructs an
+    strict admission; this function never constructs an
     information set and never bypasses its constructor laws.
 
     ``decision_instant`` must be an aware instant and each requested
@@ -468,7 +468,7 @@ def monthly_decision_calendar(
     weekly, or custom-frequency builder ships, and no schedule machinery exists in this module.
 
     ``tz`` must be an aware timezone object — a naive or invalid zone
-    rejects fail-closed with ``NaiveTimestampError`` through the substrate's own validation; no default zone is ever assumed. The builder's
+    is rejected with ``NaiveTimestampError`` through the substrate's own validation; no default zone is ever assumed. The builder's
     output is validated by the same grid rule researchers' grids obey
     (:func:`require_increasing_instants`) before it is returned, so
     every calendar this module emits is strictly increasing aware

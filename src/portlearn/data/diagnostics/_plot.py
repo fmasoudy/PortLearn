@@ -1,6 +1,6 @@
 """Plot specifications over the diagnostics reports (stdlib-only block).
 
-``plot`` builds :class:`PlotSpec` values — frozen, stdlib-only
+``plot`` builds :class:`PlotSpec` values — fixed, stdlib-only
 descriptions of one visualization — and never touches a plotting
 stack: the optional renderer lives in the private leaf module and
 imports it at call time only, so the core package and every spec stay
@@ -58,7 +58,7 @@ class PlotSeries:
 
 @dataclass(frozen=True)
 class PlotSpec:
-    """A frozen, stdlib-only description of one visualization.
+    """A fixed, stdlib-only description of one visualization.
 
     The same spec type serves every kind.  ``labels`` carries the
     exact keys verbatim (never a derived calendar value), every
@@ -105,7 +105,7 @@ def _require_dataset(source: Any) -> None:
         raise TypeError(
             "plot() accepts exactly one sealed ResearchDataset or one "
             "diagnostics report; got "
-            f"{type(source).__name__!r}, fail-closed"
+            f"{type(source).__name__!r}, unconditional"
         )
 
 

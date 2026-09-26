@@ -3,9 +3,9 @@
 These tests freeze the generic-user-data-interface laws: the declared
 schema mandate (L1), the single availability convention (L2),
 duck-typed DataFrame admission with a closed value domain (L3), the
-frozen-law-only time gate (L4), stdlib CSV decoding (L5), the guarded
+fixed-law-only time check (L4), stdlib CSV decoding (L5), the guarded
 Parquet extra (L6), the single row→record chokepoint enforcing the
-frozen identity/chronology/availability laws (L7), frequency as
+fixed identity/chronology/availability laws (L7), frequency as
 carried metadata never semantics (L8), and ingestion provenance (L9).
 """
 
@@ -266,7 +266,7 @@ def test_value_domain_accepts_str_int_float_bool_none() -> None:
 
 
 # --------------------------------------------------------------------------- #
-# L4 — time fields are frozen-law-only
+# L4 — time fields are fixed-law-only
 # --------------------------------------------------------------------------- #
 
 

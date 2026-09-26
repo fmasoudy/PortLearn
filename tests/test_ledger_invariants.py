@@ -1,8 +1,8 @@
-"""Hand-calculated invariant battery for the frozen portfolio ledger.
+"""Hand-calculated invariant battery for the fixed portfolio ledger.
 
-This module is a test-only tranche: it adds no production code,
-edits no frozen surface, and exercises only the frozen ledger public
-interface (``portlearn.ledger.build_ledger`` with the frozen weight,
+This module is a test-only module: it adds no production code,
+edits no fixed surface, and exercises only the fixed ledger public
+interface (``portlearn.ledger.build_ledger`` with the fixed weight,
 drift, and cost primitives it composes).  Where ``tests/test_ledger_contracts.py``
 freezes the ledger behavioral contracts, this battery independently
 re-derives the eleven invariant families I1–I11
@@ -14,11 +14,11 @@ from first principles:
   denominator), with execution-free rows reducing to ``D`` itself;
 * I3  multiplicative costs ``F_cost,t = Π_k (1 − q_k)``, with a
   cost-free row paying exactly nothing;
-* I4  POST_TRADE = TARGET on every execution, fail-closed, with any
+* I4  POST_TRADE = TARGET on every execution, unconditional, with any
   compliant engine producing a value-equal ledger;
 * I5  the per-holding segment drift identity chained across
   executions and periods, opening → drift → execution → … → closing;
-* I5b execution turnover summing to row turnover under both frozen
+* I5b execution turnover summing to row turnover under both fixed
   conventions (one_way and two_sided);
 * I6  execution ownership by EXECUTION instant on ``[start, end)`` —
   delayed executions charge the executing period, a boundary
@@ -28,8 +28,8 @@ from first principles:
 * I8  purity/replay: independent assemblies of identical inputs
   produce value-equal, row-for-row identical ledgers;
 * I9  behavioral immutability of the whole record;
-* I10 fail-closed admission floors with the frozen named exceptions;
-* I11 an anti-oracle meta-floor: every expected value is produced by
+* I10 unconditional admission minimums with the fixed named exceptions;
+* I11 an anti-reference meta-floor: every expected value is produced by
   in-module ``_hand_*`` helpers using only literals, ``Fraction``,
   and stdlib arithmetic — never by calling the library under test.
 
@@ -80,7 +80,7 @@ FEB20 = datetime(2026, 2, 20, tzinfo=UTC)
 FEB25 = datetime(2026, 2, 25, tzinfo=UTC)
 
 # ---------------------------------------------------------------------------
-# Hand-derived arithmetic helpers (the I11 anti-oracle perimeter).
+# Hand-derived arithmetic helpers (the I11 anti-reference perimeter).
 #
 # Every expected value in this battery is computed below using ONLY
 # literal rationals, ``Fraction``, and stdlib arithmetic.  None of
@@ -121,7 +121,7 @@ def _hand_segment_denominator(
 ) -> Fraction:
     """The holding-segment denominator ``D = Σᵢ wᵢ·gᵢ`` by hand.
 
-    The factor supply must name exactly the held universe (the frozen
+    The factor supply must name exactly the held universe (the fixed
     within-segment law); a fixture violating it is a fixture bug.
     """
     if set(book) != set(factors):
@@ -478,7 +478,7 @@ _ALL_ROW_TABLES = (_MULTI_ROWS, _DELAYED_ROWS, _ENTER_EXIT_ROWS)
 
 # ---------------------------------------------------------------------------
 # Construction helpers (public API used normally — outside the
-# ``_hand_*`` anti-oracle perimeter, per I11).
+# ``_hand_*`` anti-reference perimeter, per I11).
 # ---------------------------------------------------------------------------
 
 
@@ -540,7 +540,7 @@ class _RecordingEngine:
 
 class _SkewEngine:
     """A NON-compliant engine: nudges one target weight, so the
-    post-trade book is no longer the target (I4 fail-closed probe)."""
+    post-trade book is no longer the target (I4 unconditional probe)."""
 
     def account(
         self,
@@ -837,7 +837,7 @@ def test_execution_free_period_charges_no_costs_exactly() -> None:
 
 
 # ---------------------------------------------------------------------------
-# I4 — POST_TRADE = TARGET, fail-closed; engines are interchangeable.
+# I4 — POST_TRADE = TARGET, unconditional; engines are interchangeable.
 # ---------------------------------------------------------------------------
 
 
@@ -964,7 +964,7 @@ def test_execution_turnover_sums_to_row_turnover() -> None:
 
 
 def test_turnover_conventions_are_pinned_one_way_and_two_sided() -> None:
-    # The SAME world under both frozen conventions: one_way = 0.5·Σ|Δ|
+    # The SAME world under both fixed conventions: one_way = 0.5·Σ|Δ|
     # and two_sided = Σ|Δ| — exactly doubles on these books — with
     # the cost fraction following the convention-bound measure and
     # the row turnover remaining the sum of execution turnovers.
@@ -1171,7 +1171,7 @@ def test_books_are_read_only_through_the_public_surface() -> None:
 
 def test_input_mapping_mutation_cannot_reach_the_record() -> None:
     # The snapshot discipline, behaviorally: mutating the caller's
-    # input mappings AFTER construction leaves the frozen record
+    # input mappings AFTER construction leaves the fixed record
     # untouched.
     inputs = _ledger_inputs(_WORLD_MULTI)
     path = build_ledger(**inputs)
@@ -1184,14 +1184,14 @@ def test_input_mapping_mutation_cannot_reach_the_record() -> None:
 
 
 # ---------------------------------------------------------------------------
-# I10 — fail-closed admission floors with the frozen named exceptions.
+# I10 — unconditional admission minimums with the fixed named exceptions.
 # ---------------------------------------------------------------------------
 
 
 def test_chronology_violations_reject_with_named_exception() -> None:
     # Overlapping / non-increasing accounting instants, non-monotone
     # executions, and executions outside the horizon all reject with
-    # the frozen InvalidChronologyError — the named class, not a bare
+    # the fixed InvalidChronologyError — the named class, not a bare
     # ValueError.
     with pytest.raises(InvalidChronologyError):
         build_ledger(
@@ -1229,7 +1229,7 @@ def test_chronology_violations_reject_with_named_exception() -> None:
 
 def test_naive_timestamps_reject_with_named_exception() -> None:
     # A naive accounting instant, a naive growth-factor key, and a
-    # naive decision instant each reject with the frozen
+    # naive decision instant each reject with the fixed
     # NaiveTimestampError.
     with pytest.raises(NaiveTimestampError):
         build_ledger(
@@ -1289,7 +1289,7 @@ def test_non_unit_budget_books_reject_on_the_wealth_path() -> None:
 
 def test_non_finite_growth_factors_reject() -> None:
     # NaN, infinity, and negative gross factors all reject with
-    # ValueError through the frozen factor law.
+    # ValueError through the fixed factor law.
     factors = dict(_WORLD_MULTI["factors"])
     healthy = {
         start: _hand_book(book) for start, book in factors.items()
@@ -1306,7 +1306,7 @@ def test_non_finite_growth_factors_reject() -> None:
 
 
 # ---------------------------------------------------------------------------
-# I11 — the anti-oracle meta-floor.
+# I11 — the anti-reference meta-floor.
 # ---------------------------------------------------------------------------
 
 

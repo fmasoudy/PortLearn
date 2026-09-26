@@ -1,16 +1,16 @@
 """Behavioral contract tests for the alignment module.
 
-These tests enforce the approved alignment laws adversarially: the
-store indexes ``(series_id, observation_time)`` groups under the frozen
+These tests enforce the specified alignment laws adversarially: the
+store indexes ``(series_id, observation_time)`` groups under the fixed
 record discipline, visibility is decided solely by each record's
-declared availability through the frozen vintage operation (never by a
+declared availability through the strict vintage operation (never by a
 second admission rule, never by observation-date matching), absent
 slots are explicit ``None`` with no silent carry, admission is
 inclusive at the decision instant, instants compare as normalized
 instants across timezones, the monthly decision-calendar builder
 composes the shared period-calendar helper (imported, never restated)
 and emits UTC month-end instants including leap February, decision
-grids are strictly increasing aware instants or reject with the frozen
+grids are strictly increasing aware instants or reject with the fixed
 chronology/timestamp errors, the module aggregates nothing and adds no
 publication lag, and its documentation carries the researcher warning
 against observation-date and naive ``merge_asof``-style alignment.
@@ -150,7 +150,7 @@ class TestStoreBuild:
             portlearn.alignment.ObservationStore([first, duplicate])
         # A revision pair — same observation, later availability — is
         # exactly what the store holds; vintage choice is a query-time
-        # matter for the frozen operation, never a build-time reject.
+        # matter for the fixed operation, never a build-time reject.
         store = portlearn.alignment.ObservationStore(gdp_series())
         assert store.provenance["observation_group_count"] == 1
         assert store.provenance["record_count"] == 2
@@ -200,7 +200,7 @@ class TestStoreBuild:
 
 
 # --------------------------------------------------------------------------- #
-# Visibility: availability-aware admission through the frozen vintage law
+# Visibility: availability-aware admission through the fixed vintage law
 # --------------------------------------------------------------------------- #
 
 
@@ -379,7 +379,7 @@ class TestAlign:
         information = InformationSet(admitted, as_of=decision)
         assert len(list(information)) == 2
         # Alignment returns the caller's vintage records themselves —
-        # the store's own frozen record objects, by identity.
+        # the store's own fixed record objects, by identity.
         assert set(admitted) <= set(cpi_series() + gdp_series())
 
     def test_unknown_series_or_group_rejects_fail_closed(self) -> None:
@@ -482,7 +482,7 @@ class TestDecisionCalendar:
                 portlearn.alignment.monthly_decision_calendar(
                     (2026, 1), bad_count, UTC
                 )
-        # A naive declared timezone rejects through the frozen law the
+        # A naive declared timezone rejects through the fixed law the
         # shared helper itself enforces — never a local default zone.
         with pytest.raises(NaiveTimestampError):
             portlearn.alignment.monthly_decision_calendar(
@@ -655,7 +655,7 @@ class TestModuleSurface:
         self,
     ) -> None:
         tree = module_tree()
-        # The frozen vintage operation is the module's only vintage
+        # The strict vintage operation is the module's only vintage
         # path: it is imported from the observations module and called.
         vintage_calls = [
             node
@@ -666,7 +666,7 @@ class TestModuleSurface:
         ]
         assert vintage_calls
         # No comparison anywhere in the module may have an availability
-        # operand: the inclusive admission law lives only in the frozen
+        # operand: the inclusive admission law lives only in the fixed
         # modules, never re-implemented here.
         for node in ast.walk(tree):
             if isinstance(node, ast.Compare):
@@ -688,7 +688,7 @@ class TestModuleSurface:
                                 f"{node.lineno}: {ast.unparse(node)}"
                             )
         # The module never constructs information sets: admission of
-        # the aligned records is the caller's, through the frozen
+        # the aligned records is the caller's, through the fixed
         # constructor laws.
         for node in ast.walk(tree):
             if isinstance(node, ast.Name) and node.id == "InformationSet":
@@ -777,7 +777,7 @@ class TestModuleSurface:
         ):
             assert error not in FROZEN_CONTRACT_ERRORS
         assert len(FROZEN_CONTRACT_ERRORS) == 6
-        # Frozen errors are reused by identity, never re-defined.
+        # Pinned errors are reused by identity, never re-defined.
         assert (
             portlearn.alignment.AmbiguousObservationError
             is AmbiguousObservationError
