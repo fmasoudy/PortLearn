@@ -9,7 +9,7 @@ turnover. The convention is a first-class binding input — a bare
 scalar turnover without a named convention is an incomplete cost
 specification.
 
-The laws, in summary:
+The rules, in summary:
 
 - **Convention binding.** The keyword is exactly ``turnover`` (never
   alternated publicly with ``turnover_convention``) and accepts only
@@ -27,15 +27,15 @@ The laws, in summary:
   selected_turnover_measure(trade)`` and ``F_cost = 1 − q``; the
   domain is ``0 ≤ q < 1``, enforced strict on non-finite,
   negative, or ``q ≥ 1`` inputs (``F_cost = 0`` or negative is not a
-  lawful portfolio state). The domain check is the safety net
+  valid portfolio state). The domain check is the safety net
   especially for leveraged/short books, whose two-sided turnover may
   exceed 2 and push ``q`` to 1 even at moderate rates.
-- **Rate law.** ``rate ≥ 0`` real finite; negative, non-real
+- **Rate rule.** ``rate ≥ 0`` real finite; negative, non-real
   (``bool``/``Decimal``/string/complex), and non-finite rates reject;
-  ``rate = 0`` is lawful (the frictionless model).
+  ``rate = 0`` is valid (the frictionless model).
 - **Baseline cost-to-weights separation.** Under this declared
   simplified baseline convention: weights track — ``POST_TRADE =
-  TARGET`` exactly, the rebalancing law unaltered; value track
+  TARGET`` exactly, the rebalancing rule unaltered; value track
   — multiplied by ``F_cost``. Costs multiply value, never weights.
   Cash financing, execution-level fee funding, partial fills,
   spreads, slippage, market impact, and share-space execution are
@@ -79,7 +79,7 @@ _RECOGNIZED_CONVENTIONS: dict[str, Any] = {
 
 
 def _require_rate(value: object) -> float:
-    """The rate law: a finite real ≥ 0; ``bool`` is not a number; no
+    """The rate rule: a finite real ≥ 0; ``bool`` is not a number; no
     clipping or normalization — out-of-domain inputs reject."""
     if isinstance(value, bool):
         raise ValueError(  # noqa: TRY004 — bool rejection is law, not type discipline
@@ -117,7 +117,7 @@ def _require_recognized_convention(value: object) -> tuple[str, Any]:
 
 
 def _require_weight_mapping(value: object, role: str) -> Mapping[str, float]:
-    """A weight book operand must be a mapping of identifiers to
+    """An operand of portfolio weights must be a mapping of identifiers to
     weights; anything else rejects unconditionally on the ValueError-only
     surface before book construction is attempted."""
     if not isinstance(value, Mapping):
@@ -187,7 +187,7 @@ class Proportional:
 
         Domain-checked ``0 ≤ q < 1``: a non-finite,
         negative, or ``q ≥ 1`` result rejects — ``F_cost = 0`` or
-        negative is not a lawful portfolio state, and leveraged books
+        negative is not a valid portfolio state, and leveraged books
         can reach the boundary even at moderate rates. Pure with
         respect to the trade.
         """
@@ -208,7 +208,7 @@ class Proportional:
                 f"the cost fraction q must satisfy q < 1 (F_cost > 0); "
                 f"got q = {fraction!r} (rate {self._rate!r} × "
                 f"{self._convention} turnover {measure_q!r}) — F_cost = 0 "
-                "or negative is not a lawful portfolio state and fails "
+                "or negative is not a valid portfolio state and fails "
                 "closed."
             )
         return fraction
@@ -223,7 +223,7 @@ class Proportional:
         pre_trade_weights: Mapping[str, float],
         target_weights: Mapping[str, float],
     ) -> float:
-        """Estimate the cost of trading to the target weight book.
+        """Estimate the cost of trading to the target portfolio weights.
 
         The public ``CostModel`` surface over raw weight mappings:
         constructs the canonical ``WeightTrade`` with exactly the

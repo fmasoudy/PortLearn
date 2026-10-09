@@ -2,8 +2,8 @@
 
 ``build_ledger`` composes the PortLearn accounting contract into one
 immutable ledger value: the weight-book contract, the growth-factor
-drift law over holding segments (composed through ``pl.rebalance``),
-the trade, turnover, and proportional-cost laws, and the
+drift rule over holding segments (composed through ``pl.rebalance``),
+the trade, turnover, and proportional-cost rules, and the
 accounting-engine interface. The result — a ``LedgerPath`` — carries
 exactly one ``LedgerRow`` per accounting period in finance-table
 language, with zero, one, or many ``Execution`` records per row.
@@ -15,14 +15,14 @@ The contract, in summary:
   fixed-universe denominator ``D_m = Σᵢ wᵢ·gᵢ`` per segment — never a
   single denominator over a multi-execution period.
 - **Multiplicative costs.** ``F_cost,t = Π_k (1 − q_k)`` under the
-  cost law; ``G_net = G_gross × F_cost``; costs never enter
+  cost rule; ``G_net = G_gross × F_cost``; costs never enter
   additively, and ``W_{t+1} = W_t × G_net,t`` from the caller-supplied
   initial wealth ``W_0`` (default 1).
 - **Half-open ownership.** An execution belongs to the accounting
   period containing its instant — ``[period_start, period_end)`` — and
   closing weights are the portfolio at ``period_end⁻``: an execution
   exactly at ``period_end`` belongs to the next row.
-- **The engine law.** Every supplied ``AccountingEngine`` must return
+- **The engine rule.** Every supplied ``AccountingEngine`` must return
   ``POST_TRADE = TARGET`` on every execution — anything else rejects
   strict.
 - **Realized returns by holding interval.** The engine receives each
@@ -31,7 +31,7 @@ The contract, in summary:
   accounting boundaries subdivide that interval, never redefine it.
 
 The module imports only PortLearn modules and the stdlib,
-defines no new exception classes (the timing-law errors and
+defines no new exception classes (the timing-rule errors and
 ``ValueError`` carry every failure), and records no strategy,
 experiment, or run identity anywhere on the record.
 """
@@ -119,7 +119,7 @@ class _FrozenBook(Mapping[str, float]):
 def _exact_total(values: Iterable[float]) -> float:
     """Compensated (Neumaier) summation — exact, order-independent
     accumulation for the budget and denominator aggregates, so a
-    lawful book is never rejected or mis-measured by naive float
+    valid book is never rejected or mis-measured by naive float
     accumulation order. Pure stdlib arithmetic; no rounding of the
     mathematical sum beyond the float representation itself."""
     total = 0.0
@@ -186,10 +186,10 @@ def _segment_denominator(
     through ``pl.rebalance.drift_weights``, which normalizes
     ``D`` away inside its own renormalization ``wᵢ·gᵢ/D``. The ledger
     retains this denominator calculation because the segment-composed
-    gross law ``G_gross,t = Π_m D_m`` needs each segment's
+    gross rule ``G_gross,t = Π_m D_m`` needs each segment's
     denominator as a value in its own right; without it the period's
     gross growth would be unrecoverable from the drifted weights
-    alone. No drift-law formula beyond this ``D_m`` is
+    alone. No drift-rule formula beyond this ``D_m`` is
     restated as this module's own."""
     if set(factors) != set(book):
         raise ValueError(
@@ -245,13 +245,13 @@ def _drift(
     module. The internal book is carried as a ``PortfolioWeights``
     value object (POST_TRADE at birth from the caller's initial
     mapping, PRE_TRADE after every drift), so a TARGET can never be
-    drifted — ``drift_weights`` itself enforces that law."""
+    drifted — ``drift_weights`` itself enforces that rule."""
     return _rebalance.drift_weights(book, factors)
 
 def _checked_weight(asset: str, weight: Any, role: str) -> float:
     """A supplied weight must be a non-bool finite real; signed weights
-    (shorts) and explicit zeros are lawful — only the representation
-    fails closed here (the budget law is applied to the whole book)."""
+    (shorts) and explicit zeros are valid — only the representation
+    fails closed here (the budget rule is applied to the whole book)."""
     if isinstance(weight, bool) or not isinstance(weight, (int, float)):
         raise ValueError(  # noqa: TRY004 — ValueError-only surface is the error law
             f"the {role} weight on {asset!r} must be a real number; "
@@ -286,7 +286,7 @@ def _require_unit_budget(book: Mapping[str, float], role: str) -> None:
 
 
 def _supplied_book(value: Any, role: str) -> dict[str, float]:
-    """Admit a supplied weight book (the initial book or a decision's
+    """Admit supplied portfolio weights (the initial weights or a decision's
     target): a mapping of identifiers to finite real weights with the
     unit-NAV budget enforced — the unit-NAV check on every supplied
     book."""
@@ -310,7 +310,7 @@ class Execution:
     the desired target, the drifted pre-trade book it ran from, the
     canonical weight-space trade, the turnover measure and cost
     fraction under the cost model's declared convention, and the
-    post-trade book — which the engine law pins to the target exactly
+    post-trade book — which the engine rule pins to the target exactly
     (POST_TRADE = TARGET, re-verified). An immutable value
     object with deterministic value equality; no hash guarantee.
     """
@@ -423,7 +423,7 @@ def _decision_instants(decision: Any) -> tuple[datetime, datetime]:
 def _turnover_measure(cost_model: Any):
     """The cost model's bound turnover convention, by its stable
     canonical identity — the record carries the same convention the
-    cost law binds, never a re-derived or defaulted one."""
+    cost rule binds, never a re-derived or defaulted one."""
     convention = getattr(cost_model, "convention", None)
     if convention == "one_way":
         return _turnover.one_way
@@ -450,13 +450,13 @@ def build_ledger(
     Walks the wealth path period by period, splitting holding time
     into segments at execution instants: gross growth composes the
     per-segment denominators ``G_gross,t = Π_m D_m``, costs compose
-    ``F_cost,t = Π_k (1 − q_k)`` under the cost law, and the
+    ``F_cost,t = Π_k (1 − q_k)`` under the cost rule, and the
     unit-NAV account recurses ``W_{t+1} = W_t × G_net,t`` from the
     caller-supplied initial wealth ``initial_wealth`` (default 1).
 
     ``initial_wealth`` is the account's opening wealth ``W_0`` and is
     SEPARATE from the unit-NAV weight budget: the budget
-    law is a *weight* identity — every book on the wealth path must
+    rule is a *weight* identity — every book on the wealth path must
     carry budget exactly 1.0, whatever currency or scale the account
     is denominated in — while ``initial_wealth`` only scales the
     reported ``wealth_open``/``wealth_close``/``final_wealth`` values.

@@ -1,6 +1,6 @@
 """The forecasting and estimation lifecycle contract.
 
-This module defines the lifecycle laws around the
+This module defines the lifecycle rules around the
 ``Forecaster`` protocol — fitting, refitting, forecast timing,
 tuning, seeds, determinism, and provenance — as declared value
 objects and data-admission helpers beside that protocol, never inside it.
@@ -8,7 +8,7 @@ It ships contracts only: no estimator, no wrapper, no model zoo, no
 registry, and no engine. A research repository implements a forecaster satisfying the ``Forecaster`` protocol and consumes these
 lifecycle objects.
 
-Five laws govern the whole module:
+Five rules govern the whole module:
 
 - **One clock for the cutoff.** The training-information cutoff of a
   fit is the ``as_of`` of the ``InformationSet`` consumed by
@@ -16,7 +16,7 @@ Five laws govern the whole module:
   caller-declared, and no cutoff parameter, field, or keyword exists
   on this module's surface through which a second clock could be
   smuggled. Admission at that ``as_of`` has already excluded every
-  record whose ``available_time`` follows it, so the law holds by
+  record whose ``available_time`` follows it, so the rule holds by
   construction; the exported boundary checks re-assert it detectably
   so a hostile or wrapped estimator that keeps future-available
   records fails closed instead of warning.
@@ -96,7 +96,7 @@ __all__ = [
 class PlanStructureError(ValueError):
     """A fitting plan, fit window, or helper input is malformed.
 
-    The module-owned structural arm: a blank or non-string model
+    The module-owned structural rejection: a blank or non-string model
     identity, an unsupported configuration shape, a mis-typed seed, a
     raw instant in place of a fit window, a wrong determinism
     declaration, or a malformed record collection. Distinct on purpose from the timing module's chronology and admission errors, which remain the only errors for timing and admission violations.
@@ -117,7 +117,7 @@ class ProvenanceStructureError(ValueError):
     """Lifecycle provenance is malformed or dishonest.
 
     Raised when a cutoff is asserted somewhere other than the fit
-    set's own ``as_of`` (the one-clock law), when a provenance or
+    set's own ``as_of`` (the one-clock rule), when a provenance or
     reproducibility input is structurally malformed, or when a
     declared determinism class is contradicted by the evidence.
     """
@@ -156,7 +156,7 @@ class FitWindow:
     A single declared aware instant — the earliest observation time
     the fitting method will consume — with no end field: the window's
     end is the fit information set's own ``as_of`` (the one-clock
-    law), so a second end clock cannot exist either. Naive
+    rule), so a second end clock cannot exist either. Naive
     timestamps and calendar dates are rejected with ``NaiveTimestampError``; the stored instant is the exact object
     supplied, never coerced or normalized.
     """
@@ -620,7 +620,7 @@ def require_selection_labels_available(
 ) -> None:
     """Require hyperparameter-selection labels at the selection origin.
 
-    The tuning-timing law: every label a selection scores on must be
+    The tuning-timing rule: every label a selection scores on must be
     realizable at the selection origin — its ``available_time`` at
     or before that instant. A label available after the origin is
     the walk-forward leak made structural: it rejects with ``FutureInformationError`` at the selection boundary. A naive origin rejects with ``NaiveTimestampError``; a
@@ -677,7 +677,7 @@ def fitting_provenance(
     researcher-side wrapper adapted an external estimator,
     ``wrapped_identity`` records that implementation's identity and
     version (non-blank string); it is provenance only and grants no
-    exemption from any lifecycle law.
+    exemption from any lifecycle rule.
     """
     if not isinstance(plan, FittingPlan):
         raise PlanStructureError(

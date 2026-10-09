@@ -4,7 +4,7 @@
 # The distribution name and the PEP 440 version declared here are the single
 # version authority for the package.
 name = "portlearn"
-version = "0.0.1.dev3"
+version = "0.0.1.dev4"
 
 # Minimum supported Python; no untested upper-version exclusion.
 requires-python = ">=3.11"
@@ -35,6 +35,11 @@ Issues = "https://github.com/fmasoudy/PortLearn/issues"
 [project.optional-dependencies]
 parquet = ["pyarrow>=21.0.0,<26"]
 plot = ["matplotlib>=3.9.2"]
+# The external-composition challenge extra: the two genuinely external
+# component ecosystems the composition-challenge example composes through frozen public
+# contracts only — scikit-learn owns estimation, cvxpy owns optimization.
+# Neither is ever imported by the core package.
+external-composition = ["scikit-learn>=1.9.1,<2", "cvxpy>=1.9.3,<2"]
 
 # Development dependencies: the test harness, the source-quality
 # checker, and a dev mirror of the plot extra (matplotlib at exactly

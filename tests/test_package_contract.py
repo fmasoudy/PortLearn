@@ -25,7 +25,7 @@ PYPROJECT_PATH = REPOSITORY_ROOT / "pyproject.toml"
 
 # Pinned package-contract values.
 DISTRIBUTION_NAME = "portlearn"
-FROZEN_DEVELOPMENT_VERSION = "0.0.1.dev3"
+FROZEN_DEVELOPMENT_VERSION = "0.0.1.dev4"
 REQUIRES_PYTHON = ">=3.11"
 BUILD_REQUIRES = ["hatchling>=1.32.0,<2"]
 BUILD_BACKEND = "hatchling.build"
@@ -149,16 +149,20 @@ def test_pyproject_declares_plot_extra_with_matplotlib_floor_not_core(
 
     parquet_pin = "pyarrow>=21.0.0,<26"
     plot_pin = "matplotlib>=3.9.2"
+    external_composition_pin = ["scikit-learn>=1.9.1,<2", "cvxpy>=1.9.3,<2"]
     optional = project_table.get("optional-dependencies", {})
     assert optional == {
         "parquet": [parquet_pin],
         "plot": [plot_pin],
+        "external-composition": external_composition_pin,
     }, (
         "the optional-dependency table must be exactly the guarded "
         f"parquet extra {{'parquet': ['{parquet_pin}']}} and the plot "
         f"extra {{'plot': ['{plot_pin}']}} with the evidence-supported "
         "matplotlib floor; the former optimization extra was removed by "
-        f"scipy became core; found {optional!r}"
+        "scipy became core; the composition-challenge external-composition extra is the "
+        "exact sklearn/cvxpy challenge pair; "
+        f"found {optional!r}"
     )
 
 

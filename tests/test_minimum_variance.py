@@ -417,8 +417,11 @@ def test_root_all_is_unchanged_by_the_third_builtin() -> None:
 def test_lazy_facade_import_works_with_scipy_absent() -> None:
     """The lazy-import law: ``import portlearn.strategies``
     succeeds in this scipy-absent process without importing scipy,
-    through both the direct route and the root facade."""
-    with _fresh_modules_context():
+    through both the direct route and the root facade. The test
+    itself enters the scipy-absent isolation (restored on exit) so
+    the absence precondition holds regardless of process state left
+    by other suites."""
+    with _fresh_modules_context(), _scipy_absent():
         import portlearn
 
         direct = importlib.import_module("portlearn.strategies")
@@ -566,11 +569,15 @@ def test_constructor_exposes_the_three_fields_read_only() -> None:
 def test_construct_succeeds_with_scipy_absent() -> None:
     """The dependency law: construction is solver-independent —
     ``MinimumVariance(...)`` constructs with scipy absent from the
-    process (the failure belongs to ``decide`` alone, F15)."""
-    assert "scipy" not in sys.modules
-    minimum_variance = _require_minimum_variance()
-    strategy = minimum_variance(dict(_MAP_A), 4)
-    assert strategy.window == 4
+    process (the failure belongs to ``decide`` alone, F15). The
+    test itself enters the scipy-absent isolation (restored on
+    exit) so the absence precondition holds regardless of process
+    state left by other suites."""
+    with _scipy_absent():
+        assert "scipy" not in sys.modules
+        minimum_variance = _require_minimum_variance()
+        strategy = minimum_variance(dict(_MAP_A), 4)
+        assert strategy.window == 4
 
 
 # --------------------------------------------------------------------------- #
