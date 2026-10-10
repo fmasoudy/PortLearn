@@ -25,7 +25,7 @@ PYPROJECT_PATH = REPOSITORY_ROOT / "pyproject.toml"
 
 # Pinned package-contract values.
 DISTRIBUTION_NAME = "portlearn"
-FROZEN_DEVELOPMENT_VERSION = "0.0.1.dev3"
+FROZEN_DEVELOPMENT_VERSION = "0.0.1.dev4"
 REQUIRES_PYTHON = ">=3.11"
 BUILD_REQUIRES = ["hatchling>=1.32.0,<2"]
 BUILD_BACKEND = "hatchling.build"
@@ -33,6 +33,8 @@ DEVELOPMENT_DEPENDENCIES = {
     "pytest>=9.1.1,<10",
     "ruff>=0.16.6,<0.17",
     "matplotlib>=3.9.2",
+    "scikit-learn>=1.9.1,<2",
+    "cvxpy>=1.9.3,<2",
 }
 PUBLIC_REPOSITORY_URL = "https://github.com/fmasoudy/PortLearn"
 PUBLIC_ISSUES_URL = "https://github.com/fmasoudy/PortLearn/issues"
@@ -149,16 +151,20 @@ def test_pyproject_declares_plot_extra_with_matplotlib_floor_not_core(
 
     parquet_pin = "pyarrow>=21.0.0,<26"
     plot_pin = "matplotlib>=3.9.2"
+    external_composition_pin = ["scikit-learn>=1.9.1,<2", "cvxpy>=1.9.3,<2"]
     optional = project_table.get("optional-dependencies", {})
     assert optional == {
         "parquet": [parquet_pin],
         "plot": [plot_pin],
+        "external-composition": external_composition_pin,
     }, (
         "the optional-dependency table must be exactly the guarded "
         f"parquet extra {{'parquet': ['{parquet_pin}']}} and the plot "
         f"extra {{'plot': ['{plot_pin}']}} with the evidence-supported "
         "matplotlib floor; the former optimization extra was removed by "
-        f"scipy became core; found {optional!r}"
+        "scipy became core; the composition-challenge external-composition extra is the "
+        "exact sklearn/cvxpy challenge pair; "
+        f"found {optional!r}"
     )
 
 
@@ -313,24 +319,35 @@ def test_build_backend_is_bounded_hatchling(pyproject: dict) -> None:
     )
 
 
-def test_development_group_is_exactly_pytest_ruff_and_matplotlib(
+def test_development_group_is_exactly_pytest_ruff_matplotlib_sklearn_cvxpy(
     pyproject: dict,
 ) -> None:
-    """The dev group is exactly pytest, ruff, and matplotlib.
+    """The dev group is exactly pytest, ruff, matplotlib, scikit-learn,
+    and cvxpy.
 
     Matplotlib is the dev mirror of the plot extra at exactly its
     extra requirement, present so the complete development suite
-    exercises the renderer test path. scipy needs no dev mirror: it
-    is an unconditional core runtime dependency.
+    exercises the renderer test path. scikit-learn and cvxpy are dev
+    mirrors of the optional external-composition extra at exactly its
+    extra requirements, present solely so a plain locked development
+    or CI sync (`uv sync --locked`) provisions the complete
+    development suite, including the external-composition challenge
+    tests. Neither mirror is a core runtime dependency, and user
+    installation of these capabilities still requires the optional
+    extra. scipy needs no dev mirror: it is an unconditional core
+    runtime dependency.
     """
     groups = pyproject.get("dependency-groups", {})
     declared = {spec for spec in groups.get("dev", [])}
     assert declared == DEVELOPMENT_DEPENDENCIES, (
-        "the dev dependency group must be exactly pytest, ruff, and "
-        "matplotlib — matplotlib is the dev mirror of the plot "
-        "extra's bounded addition for headless Agg render tests, not "
-        "an unconditional runtime dependency; scipy is core and needs "
-        "no dev mirror; found "
+        "the dev dependency group must be exactly pytest, ruff, "
+        "matplotlib, scikit-learn, and cvxpy — matplotlib is the dev "
+        "mirror of the plot extra's bounded addition for headless Agg "
+        "render tests, scikit-learn and cvxpy are dev mirrors of the "
+        "optional external-composition extra present solely so plain "
+        "locked development and CI syncs run the complete suite, and "
+        "none of the three is an unconditional runtime dependency; "
+        "scipy is core and needs no dev mirror; found "
         f"{sorted(declared)!r}"
     )
 

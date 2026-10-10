@@ -6,6 +6,20 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.0.1.dev4]
+
+### Added
+
+- Portfolio evaluation metrics: the `portlearn.metrics` module with finance-standard point statistics over one recorded wealth path — annualized return, volatility, Sharpe ratio, certainty-equivalent return, and maximum drawdown — with the return basis, annualization frequency, and risk-free reference declared per call.
+- Results and provenance schema: the `portlearn.results` module with immutable result records, canonical JSON serialization, forecast and information-set provenance links, conformance records with sanctioned deviations, parameter relations, and the ledger digest helper.
+- Experiments: the `portlearn.experiments` module with process-local strategy registration, the serializable experiment configuration with stable identifiers and benchmark metadata, shared experimental conditions, four declarative selection modes, and the runtime that applies one common information supply, universe, and accounting contract to every selected strategy.
+- Temporal research protocols: the `portlearn.protocols` module with the declarative temporal protocol layer — canonical protocols, sparse per-strategy override composition, and the ordinary authoring layer — normalizing to one canonical resolution.
+- Comparison outputs: the `portlearn.comparisons` module with structured comparison tables and a plain-text renderer over recorded experiment results; recorded values, declarations, verdicts, deviations, and provenance are copied verbatim, never ranked, converted, or summarized.
+- The classical research route: the `portlearn.research` entry point composing protocols, experiments, and results into one declared run, rejecting missing or incomplete fit provenance at entry.
+- Research examples: `examples/classical_research_smoke.py`, an instructional offline replay over committed sources with a reference run snapshot manifest, and `examples/external_composition_challenge.py`, a synthetic demonstration composing scikit-learn estimation and cvxpy optimization through the public contracts only.
+- The optional `external-composition` dependency group (scikit-learn and cvxpy) for the composition example; neither distribution is ever imported by the core package.
+- Public test modules covering the metrics, results, experiments, protocols, comparison, and research-entry surfaces, plus the example replay sources.
+
 ## [0.0.1.dev3]
 
 ### Added
@@ -17,11 +31,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
-- Portfolio weights: the `portlearn.weights` module with the closed portfolio-role vocabulary, target-weight validation, and immutable weight books.
+- Portfolio weights: the `portlearn.weights` module with the closed portfolio-role vocabulary, target-weight validation, and immutable portfolio weights.
 - Rebalancing: schedule policies and the drift law carrying held weights across holding segments (`portlearn.rebalance`).
 - Transaction and turnover accounting with proportional transaction-cost models (`portlearn.trades`, `portlearn.turnover`, `portlearn.costs`).
 - The transaction ledger: segment-composed accounting over the wealth path with the reference accounting engine (`portlearn.ledger`).
-- The strategy decision-contract seam — `Strategy.decide(context) -> DecisionResult` over `DecisionContext`, validated by `require_decision_result_compatible`.
+- The strategy decision interface — `Strategy.decide(context) -> DecisionResult` over `DecisionContext`, validated by `require_decision_result_compatible`.
 - Lazy module facades for the portfolio modules under the top-level package namespace.
 - Public test modules covering the portfolio-weight, rebalance, transaction, cost, ledger, and decision-contract surfaces.
 

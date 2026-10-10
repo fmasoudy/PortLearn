@@ -84,7 +84,7 @@ class EqualWeight:
     immutably at construction, so later modify of a caller-supplied
     list cannot change any future decision.
 
-    At :meth:`decide` time the allocation law is exact: ``n`` being the
+    At :meth:`decide` time the allocation rule is exact: ``n`` being the
     size of the effective support, every member receives exactly the
     binary float ``1/n`` and the target contains exactly the effective
     support keys — no cash residual sleeve, no implicit ``CASH`` key,
@@ -106,7 +106,7 @@ class EqualWeight:
         identifiers in caller-declared order; the constructor rejects a
         bare string, an empty sequence, a blank entry, a non-string
         entry, and a duplicate entry each with its own ``ValueError``
-        naming the violated declaration law.
+        naming the violated declaration rule.
         """
         if declared_support is None:
             self._declared_support: tuple[str, ...] | None = None
@@ -1166,7 +1166,7 @@ def _require_accepted_mean_variance_vector(
 
     The ``(sigma, mu_tilde)`` program, the identifiers, and the
     returned vector ``raw`` are ALL assembled in UNIVERSE order
-    (``context.universe`` - the fixed order law, the
+    (``context.universe`` - the fixed order rule, the
     one shared order of the forecast channel and the covariance
     channel), so acceptance is positional on that universe order.
     """

@@ -2,25 +2,25 @@
 
 This module defines the information semantics:
 
-- **Data law** — data is what observations exist: records carrying both
+- **Data rule** — data is what observations exist: records carrying both
   ``observation_time`` (when the underlying phenomenon is dated) and
   ``available_time`` (when the information first could have been known);
   an observation without declared availability is not data PortLearn can
   admit.
-- **Identity law** — an observation's identity is the triple
+- **Identity rule** — an observation's identity is the triple
   ``(series_id, observation_time, available_time)``.  A revision is a
   separate record with the same ``series_id`` and ``observation_time``
   and a later ``available_time``; revisions are never in-place changes.
   ``series_id`` is an opaque, non-empty, non-blank string compared by
   exact string equality — no case folding, whitespace stripping, or
   Unicode normalization of any kind.
-- **Vintage law** — at a decision time, the visible vintage of a
+- **Vintage rule** — at a decision time, the visible vintage of a
   series-observation is the record with the latest ``available_time``
   at or before the decision; a revised value is invisible before its
   own availability.  ``vintage_as_of`` accepts exactly one
   ``(series_id, observation_time)`` group and rejects duplicate
   full-identity records and mixed-group input strict.
-- **Feature lineage law** — a derived feature may not be declared
+- **Feature lineage rule** — a derived feature may not be declared
   available before its latest input: ``feature available_time ≥
   max(input available_times)``, and an empty input collection has no
   defensible availability.

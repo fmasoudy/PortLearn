@@ -54,6 +54,9 @@ PINNED_ZIP_SHA256 = {
     "ff_industry49_monthly_csv.zip": (
         "eb4831ad8e0f32d40ef8a6b1775b2e25a229d52b6d9d835559a515f0465cb9bf"
     ),
+    "ff_industry49_monthly_long_csv.zip": (
+        "6cc625a3f4da3547c6402984cfdc762a625cc651db33b962bba206645145aa17"
+    ),
 }
 
 FACTORS_CSV = "factors_monthly_csv"

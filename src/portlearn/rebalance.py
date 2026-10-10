@@ -1,4 +1,4 @@
-"""Rebalancing schedules and the drift law.
+"""Rebalancing schedules and the drift rule.
 
 This module implements the rebalancing and portfolio-drift contract:
 explicit :class:`RebalanceSchedule` declarations of strictly increasing
@@ -10,7 +10,7 @@ growth factors, exact-fill execution of a target at its execution
 instant, and the availability safety check for factor information at the
 instant of use.
 
-The laws, in summary:
+The rules, in summary:
 
 - **Declarations, never inference.** A schedule validates strict
   monotonicity and instant awareness, nothing else; it is never
@@ -19,7 +19,7 @@ The laws, in summary:
   dataset, or from a frequency adjective; every cross-frequency
   pairing is first-class, and rebalance-at-every-accounting-instant is
   expressed by declaring the sequences identical.
-- **The growth law.** ``w(t⁻)_i = w_i·g_i / Σ_j w_j·g_j`` over a immutable
+- **The growth rule.** ``w(t⁻)_i = w_i·g_i / Σ_j w_j·g_j`` over a immutable
   universe: buy-and-hold reweighting by caller-supplied gross growth
   factors ``g_i = 1 + r_i``, no trade, no cost, no cash flow, no
   normalization beyond the budget identity itself. The module never
@@ -28,7 +28,7 @@ The laws, in summary:
 - **Validated numerics.** Every factor is finite and nonnegative;
   every weight-factor product must be finite; the portfolio-growth
   denominator must be strictly positive and finite — the binding
-  short/leverage rule. An individual ``g_i = 0`` is lawful arithmetic
+  short/leverage rule. An individual ``g_i = 0`` is valid arithmetic
   (a total loss maps the asset to exactly zero); a non-positive,
   zero, or non-finite denominator is an undefined portfolio state and
   rejects. No ``OverflowError`` leaks on hostile inputs.
@@ -224,7 +224,7 @@ def _decision_execution_instants(timing: Any) -> tuple[datetime, datetime]:
     except AttributeError as error:
         raise ValueError(
             "a rebalance timing must declare decision_time and "
-            "execution_time (composing with the DecisionTiming law); got "
+            "execution_time (composing with the DecisionTiming rule); got "
             f"{type(timing).__name__}: {timing!r}"
         ) from error
     decision = to_instant(decision_raw, "decision_time")

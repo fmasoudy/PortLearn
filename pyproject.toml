@@ -4,7 +4,7 @@
 # The distribution name and the PEP 440 version declared here are the single
 # version authority for the package.
 name = "portlearn"
-version = "0.0.1.dev3"
+version = "0.0.1.dev4"
 
 # Minimum supported Python; no untested upper-version exclusion.
 requires-python = ">=3.11"
@@ -35,17 +35,33 @@ Issues = "https://github.com/fmasoudy/PortLearn/issues"
 [project.optional-dependencies]
 parquet = ["pyarrow>=21.0.0,<26"]
 plot = ["matplotlib>=3.9.2"]
+# The external-composition challenge extra: the two genuinely external
+# component ecosystems the composition-challenge example composes through frozen public
+# contracts only — scikit-learn owns estimation, cvxpy owns optimization.
+# Neither is ever imported by the core package.
+external-composition = ["scikit-learn>=1.9.1,<2", "cvxpy>=1.9.3,<2"]
 
 # Development dependencies: the test harness, the source-quality
-# checker, and a dev mirror of the plot extra (matplotlib at exactly
-# the plot-extra requirement) so a development environment can
-# exercise the renderer test path. scipy no longer needs a dev mirror:
-# it is an unconditional core runtime dependency.
+# checker, and dev mirrors of the optional extras the complete
+# development suite exercises — matplotlib at exactly the plot-extra
+# requirement (renderer test path), and the exact external-composition
+# pair below. scipy no longer needs a dev mirror: it is an
+# unconditional core runtime dependency.
 [dependency-groups]
 dev = [
     "pytest>=9.1.1,<10",
     "ruff>=0.16.6,<0.17",
     "matplotlib>=3.9.2",
+    # Dev mirrors of the optional external-composition extra only:
+    # scikit-learn>=1.9.1,<2 and cvxpy>=1.9.3,<2, exactly as declared
+    # in [project.optional-dependencies]. They exist solely so a plain
+    # locked development/CI sync (`uv sync --locked`) provisions the
+    # complete development suite, including the external-composition
+    # challenge tests. Neither becomes a core runtime dependency, and
+    # user installation of these capabilities still requires the
+    # optional extra portlearn[external-composition].
+    "scikit-learn>=1.9.1,<2",
+    "cvxpy>=1.9.3,<2",
 ]
 
 # Standards-based PEP 517 build backend, bounded.

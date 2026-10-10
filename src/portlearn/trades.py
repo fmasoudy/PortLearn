@@ -6,7 +6,7 @@ This module defines the weight-space trade transition: the
 TARGET`` transition with ``Δw = TARGET − PRE_TRADE`` aligned **by
 asset identifier, never mapping order**.
 
-The laws, in summary:
+The rules, in summary:
 
 - **State pair.** The source is a realized ``PRE_TRADE`` book and the
   destination is a ``TARGET``; any other state pairing fails closed.
@@ -15,7 +15,7 @@ The laws, in summary:
   the pre-trade book is **never revalidated against TARGET
   constraints**: rebalancing drift may legitimately displace
   PRE_TRADE weights outside the target's allocation limits, and the
-  trade from that displaced book is lawful.
+  trade from that displaced book is valid.
 - **Identifier alignment over the union of assets.** The trade
   universe is ``U = assets(PRE_TRADE) ∪ assets(TARGET)`` and
   ``Δwᵢ = w_target(i) − w_pre(i)`` for every ``i`` in ``U``, using
@@ -100,8 +100,8 @@ class WeightTrade:
         self, pre_trade: PortfolioWeights, target: PortfolioWeights
     ) -> None:
         """Construct the transition with full strict validation:
-        state pair, union-of-assets delta law, and per-identifier
-        finite deltas — the same laws ``from_weights`` applies, so no
+        state pair, union-of-assets delta rule, and per-identifier
+        finite deltas — the same rules ``from_weights`` applies, so no
         inconsistent instance can ever exist."""
         pre = _require_book(pre_trade, expected=WeightState.PRE_TRADE, role="source")
         post = _require_book(target, expected=WeightState.TARGET, role="destination")

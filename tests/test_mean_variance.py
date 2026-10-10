@@ -985,14 +985,18 @@ def test_nonfinite_stub_vector_rejects_before_all_acceptance() -> None:
 def test_absent_backend_decide_raises_unavailable() -> None:
     """F15/T24: with scipy absent, ``decide`` raises
     OptimizationUnavailableError; construction/import succeed. The
-    eager-import defect is killed by the same block."""
-    unavailable, _ = _require_solver_exceptions()
-    mean_variance = _require_mean_variance()
-    strategy = mean_variance(dict(_MAP_2), 4, 2.0)
-    assert "scipy" not in sys.modules
-    with _scipy_absent(), pytest.raises(ValueError, match="scipy") as caught:
-        strategy.decide(_mv_context(("LOW", "HIGH")))
-    assert isinstance(caught.value, unavailable)
+    eager-import defect is killed by the same block. The test itself
+    enters the scipy-absent isolation (restored on exit) so the
+    absence precondition holds regardless of process state left by
+    other suites."""
+    with _scipy_absent():
+        unavailable, _ = _require_solver_exceptions()
+        mean_variance = _require_mean_variance()
+        strategy = mean_variance(dict(_MAP_2), 4, 2.0)
+        assert "scipy" not in sys.modules
+        with pytest.raises(ValueError, match="scipy") as caught:
+            strategy.decide(_mv_context(("LOW", "HIGH")))
+        assert isinstance(caught.value, unavailable)
 
 
 def test_solver_non_success_raises_failure_naming_status() -> None:
@@ -1564,11 +1568,15 @@ def test_constructor_exposes_the_four_fields_read_only() -> None:
 def test_construction_succeeds_with_scipy_absent() -> None:
     """T19 (F15 support): construction is solver-independent -
     ``MeanVariance(...)`` constructs with scipy absent from the
-    process (the failure belongs to ``decide`` alone)."""
-    assert "scipy" not in sys.modules
-    mean_variance = _require_mean_variance()
-    strategy = mean_variance(dict(_MAP_2), 4, _LAMBDA)
-    assert strategy.window == 4
+    process (the failure belongs to ``decide`` alone). The test
+    itself enters the scipy-absent isolation (restored on exit) so
+    the absence precondition holds regardless of process state left
+    by other suites."""
+    with _scipy_absent():
+        assert "scipy" not in sys.modules
+        mean_variance = _require_mean_variance()
+        strategy = mean_variance(dict(_MAP_2), 4, _LAMBDA)
+        assert strategy.window == 4
 
 
 # --------------------------------------------------------------------------- #

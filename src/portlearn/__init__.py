@@ -55,13 +55,53 @@ def __getattr__(name: str) -> Any:
         from importlib import import_module
 
         return import_module("portlearn.strategies")
+    if name == "metrics":
+        from importlib import import_module
+
+        return import_module("portlearn.metrics")
+    if name == "results":
+        from importlib import import_module
+
+        return import_module("portlearn.results")
+    if name == "experiments":
+        from importlib import import_module
+
+        return import_module("portlearn.experiments")
+    if name == "comparisons":
+        from importlib import import_module
+
+        return import_module("portlearn.comparisons")
+    if name == "research":
+        from importlib import import_module
+
+        return import_module("portlearn.research")
     raise AttributeError(
         f"module {__name__!r} has no attribute {name!r}; the lazily "
         "exposed public subpackage is 'data'; the public modules are "
         "'weights', 'rebalance', 'trades', 'turnover', 'costs', "
-        "'ledger', and 'strategies'."
+        "'ledger', 'strategies', 'metrics', 'results', 'experiments', "
+        "'comparisons', and 'research'."
     )
 
 
 def __dir__() -> list[str]:
-    return sorted(__all__)
+    # The lazy attribute surface is wider than __all__ (D1: module
+    # facades are lazy attributes; __all__ stays untouched): __dir__
+    # lists every lazily resolvable public module name alongside the
+    # eagerly exported names.
+    lazy = (
+        "data",
+        "weights",
+        "rebalance",
+        "trades",
+        "turnover",
+        "costs",
+        "ledger",
+        "strategies",
+        "metrics",
+        "results",
+        "experiments",
+        "comparisons",
+        "research",
+    )
+    return sorted({*__all__, *lazy})

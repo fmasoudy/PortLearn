@@ -8,7 +8,7 @@ This module defines the timing semantics:
   no default zone is ever assumed and no date-to-midnight coercion is
   ever performed, because silent coercion is the classic daily-data
   look-ahead leakage vector;
-- the chronology law
+- the chronology rule
 
   ``observation_time ≤ available_time ≤ decision_time ≤ execution_time
   ≤ realization start_time < realization end_time``
@@ -17,7 +17,7 @@ This module defines the timing semantics:
   (zero publication lag, availability exactly at the decision,
   same-instant decide-and-execute) and strictly positive realization
   length;
-- the admission law: an item of information may enter the information
+- the admission rule: an item of information may enter the information
   set for a decision at ``decision_time`` iff its ``available_time`` is
   at or before ``decision_time``, evaluated on aware instants.  The safety check
   is the decision instant only, never the execution instant, so
@@ -75,7 +75,7 @@ class NaiveTimestampError(Exception):
 
 
 class InvalidChronologyError(Exception):
-    """The chronology law was violated.
+    """The chronology rule was violated.
 
     Availability may not precede the observation it describes, a trade
     may not execute before its decision is made, outcomes may not start
@@ -85,7 +85,7 @@ class InvalidChronologyError(Exception):
 
 
 class FutureInformationError(Exception):
-    """An item failing the admission law was submitted for a decision.
+    """An item failing the admission rule was submitted for a decision.
 
     This is the look-ahead rejection: the item's ``available_time`` is
     after the ``decision_time`` of the decision that would consume it,
@@ -144,7 +144,7 @@ def _require_aware_instant(value: Any, field_name: str) -> datetime:
 
 
 def _item_available_time(item: Any) -> datetime:
-    """Extract and validate ``item.available_time`` for the admission law.
+    """Extract and validate ``item.available_time`` for the admission rule.
 
     Attribute absence and ``None`` are ``MissingAvailabilityError``; a
     naive datetime or a ``datetime.date`` is ``NaiveTimestampError``.
@@ -224,7 +224,7 @@ class ReturnRealizationPeriod:
 
     Both bounds must be aware instants and the period must have strictly
     positive length: ``start_time < end_time``.  Equal adjacent bounds
-    are admissible everywhere else in the chronology law, but a
+    are admissible everywhere else in the chronology rule, but a
     zero-length or reversed realization period is malformed.
     """
 
@@ -247,7 +247,7 @@ class ReturnRealizationPeriod:
 class DecisionTiming:
     """When a single portfolio decision is made, executed, and realized.
 
-    Validates the decision-event portion of the chronology law:
+    Validates the decision-event portion of the chronology rule:
     ``decision_time ≤ execution_time ≤ realization start_time``,
     with equal adjacent instants admissible (same-instant
     decide-and-execute is an explicit design) and all instants aware.
