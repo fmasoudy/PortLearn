@@ -9,13 +9,13 @@ carrying exactly six fields — ``run_id``, ``created_at``,
 not in run identity), so a manifest can never silently assert
 randomness control it does not provide.
 
-Design laws honoured here:
+Design rules honoured here:
 
 * **Identity is validated strictly** — blank ``run_id`` /
   ``python_version`` / ``package_version``, an empty or blank-valued
   ``dependency_pins`` mapping, or an empty ``commands`` sequence
   rejects with ``ValueError``.
-* **Aware-ness law** — ``created_at`` must be a timezone-aware
+* **Aware-ness rule** — ``created_at`` must be a timezone-aware
   instant; naive datetimes and calendar dates reject with
   ``NaiveTimestampError`` (reused by import from ``portlearn.timing``,
   where it is solely implemented).

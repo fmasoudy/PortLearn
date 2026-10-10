@@ -928,9 +928,9 @@ def test_no_optional_pandas_machinery_survives() -> None:
         "pandas is a core runtime dependency — a [pandas] extra is "
         "forbidden optional-pandas machinery"
     )
-    assert set(optional) == {"parquet", "plot"}, (
-        "optional capability groups are exactly the parquet and plot "
-        f"extras; found {sorted(optional)}"
+    assert set(optional) == {"parquet", "plot", "external-composition"}, (
+        "optional capability groups are exactly the parquet, plot, and "
+        f"external-composition extras; found {sorted(optional)}"
     )
 
     requires = list(metadata.requires("portlearn") or [])

@@ -1,14 +1,14 @@
 """Availability-aware alignment of mixed-frequency observations.
 
-This module implements the alignment laws as a thin composition
-surface over the observation, timing, and period-calendar laws: an immutable
+This module implements the alignment rules as a thin composition
+surface over the observation, timing, and period-calendar rules: an immutable
 :class:`ObservationStore` indexed by ``(series_id, observation_time)``
 group, a single visibility query that delegates vintage selection to the ``vintage_as_of`` operation, an :func:`align` output of the
 caller's own vintage records, exactly one convenience month-end
 decision-calendar builder composed over the shared period-calendar
 substrate, and one grid-chronology validator reusing the chronology and timestamp errors defined in ``portlearn.timing``.
 
-The laws, in summary:
+The rules, in summary:
 
 - **Alignment is admission, parameterized by availability.** The only
   question a decision instant asks of any series — daily, monthly, or
@@ -116,7 +116,7 @@ class ObservationStore:
 
     Built from :class:`~portlearn.observations.TimedObservation`
     records under the record rules: every record's own
-    constructor laws apply (aware instants, mandatory availability,
+    constructor rules apply (aware instants, mandatory availability,
     availability never preceding the observation), and two records
     sharing the full identity triple ``(series_id, observation_time,
     available_time)`` reject with ``AmbiguousObservationError`` — no
@@ -331,7 +331,7 @@ def align(
 
     The output is the caller's to submit to the ``InformationSet(items, as_of=decision_instant)`` constructor for
     strict admission; this function never constructs an
-    information set and never bypasses its constructor laws.
+    information set and never bypasses its constructor rules.
 
     ``decision_instant`` must be an aware instant and each requested
     observation an aware instant (naive inputs reject with

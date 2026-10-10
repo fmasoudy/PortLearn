@@ -7,7 +7,7 @@ contract error class expected to block it — executed totally by
 :func:`run_leakage_cases`, which reports every outcome as a
 :class:`LeakageFinding` and never lets an attempted leak fail silently.
 
-Design laws honoured here:
+Design rules honoured here:
 
 * ``FROZEN_CONTRACT_ERRORS`` is exactly the six module-qualified
   contract error classes — a battery can never expect a foreign error

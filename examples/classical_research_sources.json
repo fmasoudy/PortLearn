@@ -1,0 +1,15 @@
+{
+  "adapter_identity": "portlearn.data.adapters.ff",
+  "alias_catalog_version": 1,
+  "content_sha256": "16b3f20bf5bd1db8f5cd7a1b29f5cab1350eb0d5106c5309f77a6629590b1c0e",
+  "dataset_id": "industry49_monthly_csv",
+  "dataset_kind": "portfolio_returns",
+  "frequency": "monthly",
+  "last_modified": "Fri, 25 Sep 2026 21:55:15 GMT",
+  "licence_note": "Provider-format data; upstream copyright Eugene F. Fama and Kenneth R. French (committed fixtures are synthetic replicas holding invented values \u2014 no provider-owned data redistributed). Research use only; not investable and never an investability claim.",
+  "member_name": "49_Industry_Portfolios.csv",
+  "not_investable_warning": "Research dataset decoded by portlearn.data.adapters.ff; NOT investable \u2014 no factor or industry-portfolio series may be treated as a tradable asset return; portfolio_returns kinds permit candidate asset-return input semantics only, without any automatic investability claim.",
+  "retrieval_instant": "2026-10-05T09:39:31.681566+00:00",
+  "units": "percent",
+  "url": "https://mba.tuck.dartmouth.edu/pages/faculty/ken.french/ftp/49_Industry_Portfolios_CSV.zip"
+}

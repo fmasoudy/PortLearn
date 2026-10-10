@@ -4,14 +4,14 @@ This module defines the core interface contract: the
 admitted-information value object ``InformationSet``, the
 provenance-bearing ``Forecast`` and ``PortfolioDecision`` value
 objects with the deliberately thin ``AccountingResult``, the
-decision-seam value objects ``DecisionContext`` and
+decision-interface value objects ``DecisionContext`` and
 ``DecisionResult``, the seven structural contracts,
 and the three compatibility validators
 ``require_feature_lineage``,
 ``require_forecast_decision_compatible``, and
 ``require_decision_result_compatible``.
 
-Four laws are inherited from the timing and observations modules
+Four rules are inherited from the timing and observations modules
 without change:
 
 - **No new time semantics** — every instant an interface carries is one
@@ -20,7 +20,7 @@ without change:
   every boundary with the reused ``NaiveTimestampError``: no default
   timezone is assumed and no date-to-midnight coercion is performed.
 - **No second admission rule** — admission into an ``InformationSet``
-  is exactly the inclusive law
+  is exactly the inclusive rule
   ``available_time <= decision_time``, delegated to
   ``require_available_for_decision``; this module never re-implements,
   widens, or shadows it.
@@ -145,7 +145,7 @@ class InformationSet:
     An ``InformationSet`` is the set of ``TimedObservation`` records
     admitted at one decision instant ``as_of``: every record's
     ``available_time`` is at or before ``as_of`` (the inclusive
-    admission law, delegated to ``require_available_for_decision``), so
+    admission rule, delegated to ``require_available_for_decision``), so
     the set is exactly what could have been known when the decision was
     made — never information from the decision-to-execution gap.
 
@@ -297,7 +297,7 @@ class PortfolioDecision:
     """One portfolio decision: when it is made, executed, and targeted.
 
     ``decision_time`` and ``execution_time`` are aware instants
-    satisfying the chronology law ``decision_time <=
+    satisfying the chronology rule ``decision_time <=
     execution_time`` — same-instant decide-and-execute is admissible, a
     reversed order is not. ``target_weights`` maps exact-string
     instrument identifiers to target portfolio weights and is stored
@@ -307,7 +307,7 @@ class PortfolioDecision:
 
     Construction validates strictly: both instants must be aware, every
     ``target_weights`` key must be a non-blank exact string, and the
-    chronology law must hold.
+    chronology rule must hold.
     """
 
     decision_time: datetime
@@ -366,7 +366,7 @@ class DecisionContext:
     two concrete fields - there is no pseudo-type wrapping them.
 
     Construction validates strictly over the admission
-    and alignment laws, in this order:
+    and alignment rules, in this order:
 
     1. ``decision_time`` must be an aware instant (naive datetimes
        and ``datetime.date`` reject with ``NaiveTimestampError``);
@@ -386,11 +386,11 @@ class DecisionContext:
        ``forecast.decision_time == decision_time``
        (``InvalidChronologyError``).
 
-    Two laws hold by construction rather than by check. The
-    universe-vs-holdings law: nothing here forces the holdings keys
+    Two rules hold by construction rather than by check. The
+    universe-vs-holdings rule: nothing here forces the holdings keys
     of ``current_weights`` to equal ``universe`` - holdings partially
     outside the currently investable universe, and vice versa, are
-    lawful. The role law's other half: this snapshot is the
+    valid. The role rule's other half: this snapshot is the
     decision-time book, not the execution-time pre-trade book -
     accounting continues to drift the portfolio and determines the
     execution-time book separately.
@@ -446,9 +446,9 @@ class DecisionContext:
                 "of what the portfolio holds - got WeightState."
                 f"{self.current_weights.state.name}. TARGET is what a "
                 "strategy desires and POST_TRADE is what accounting "
-                "produced; neither is a lawful decision-time "
+                "produced; neither is a valid decision-time "
                 "holdings snapshot, so the value is rejected "
-                "unconditional (the decision-context role law)."
+                "unconditional (the decision-context role rule)."
             )
         holdings_aware = _require_aware_instant(
             self.current_weights_as_of, "current_weights_as_of"
@@ -502,13 +502,13 @@ class DecisionResult:
 
     Exactly two facts: the ``decision`` (a ``PortfolioDecision``) and
     the ``next_strategy_state`` the strategy carries forward (``None``
-    for a stateless strategy). The state law is fixed: the context's
+    for a stateless strategy). The state rule is fixed: the context's
     input ``strategy_state`` is never modified in place - every
     transition is represented solely by ``next_strategy_state``, and
     randomness affecting replay is carried explicitly through that
     state rather than hidden mutable RNG state. The cross-object rules - ``decision.decision_time == context.decision_time``
     and ``decision.execution_time >= context.decision_time`` - are
-    enforced at this seam by the exported
+    enforced at this interface by the exported
     ``require_decision_result_compatible`` validator.
     """
 
@@ -571,9 +571,9 @@ class Strategy(Protocol):
     ``current_weights`` snapshot, the carried ``strategy_state``,
     and an optional ``forecast`` - and returns exactly one
     ``DecisionResult``. The forecast-only signature
-    ``decide(forecast)`` is not a lawful alternative: the contract
+    ``decide(forecast)`` is not a valid alternative: the contract
     admits no compatibility shim, no dual protocol, and no
-    adapter around this seam. The context's ``strategy_state``
+    adapter around this interface. The context's ``strategy_state``
     is never modified in place; every state transition is
     represented solely by the result's ``next_strategy_state``.
     Static-only: validated behaviorally, not by ``isinstance``.
@@ -603,7 +603,7 @@ class RebalancePolicy(Protocol):
 
 @runtime_checkable
 class CostModel(Protocol):
-    """A model estimating the cost of moving between two weight books.
+    """A model estimating the cost of moving between two sets of portfolio weights.
 
     One method estimating the trade cost of moving from
     ``pre_trade_weights`` to ``target_weights`` as a bare float — a
@@ -618,14 +618,14 @@ class CostModel(Protocol):
         pre_trade_weights: Mapping[str, float],
         target_weights: Mapping[str, float],
     ) -> float:
-        """Estimate the cost of trading to the target weight book."""
+        """Estimate the cost of trading to the target portfolio weights."""
 
 
 @runtime_checkable
 class AccountingEngine(Protocol):
     """An engine accounting one executed portfolio decision.
 
-    One method consuming the decision, the pre-trade weight book, and
+    One method consuming the decision, the pre-trade portfolio weights, and
     the realized returns of the decision's outcome, and producing an
     ``AccountingResult``. Neither ``pre_trade_weights`` nor
     ``realized_returns`` carries timing, realization-period, or
